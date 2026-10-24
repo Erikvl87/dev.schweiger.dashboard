@@ -1,5 +1,3 @@
-Show the dashboards you build in the Homey app in any browser on your home network, live: a wall tablet, a laptop or a TV.
+Put the dashboards you build in the Homey app on a wall tablet, a laptop or a TV. They update the moment something changes and work as they do on your phone, device controls and widgets from other apps included, while you keep building and editing them in the Homey app.
 
-Build and edit dashboards in the Homey app as usual; this app displays them. Favorite devices, flows and moods, lights, speakers, thermostats, energy, Insights charts, sensors, zone controls, the timeline, batteries, weather, variables and app widgets work like on your phone, including the device controls.
-
-In the app's settings, save an API key from my.homey.app → Settings → API Keys once. Then open the dashboard in any browser: it shows a code, and you approve that browser in the app's settings.
+Save an API key from the Homey Web App once in this app's settings. Then open the address shown there in any browser on your home network: it shows a code, and you approve that browser in the app's settings. Kiosk mode keeps a wall tablet on one dashboard, and only someone who can approve it in the Homey app can change that.

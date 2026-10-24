@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="960" viewBox="0 0 960 960">
-  <g fill="none" stroke="#000" stroke-width="36" stroke-linejoin="round">
-    <!-- A browser window holding a grid of dashboard tiles. -->
-    <rect x="120" y="170" width="720" height="620" rx="72"/>
-    <path d="M120 300h720"/>
-    <rect x="200" y="380" width="250" height="170" rx="30"/>
-    <rect x="510" y="380" width="250" height="330" rx="30"/>
-    <rect x="200" y="610" width="250" height="100" rx="30"/>
+  <g fill="none" stroke="#000" stroke-width="40" stroke-linejoin="round">
+    <!-- A browser window holding a grid of dashboard tiles, filling the canvas as the store asks. -->
+    <rect x="40" y="100" width="880" height="760" rx="88"/>
+    <path d="M40 260h880"/>
+    <rect x="138" y="358" width="305" height="208" rx="37"/>
+    <rect x="517" y="358" width="305" height="404" rx="37"/>
+    <rect x="138" y="640" width="305" height="122" rx="37"/>
   </g>
   <g fill="#000">
-    <circle cx="200" cy="235" r="24"/>
-    <circle cx="275" cy="235" r="24"/>
-    <circle cx="350" cy="235" r="24"/>
+    <circle cx="138" cy="180" r="29"/>
+    <circle cx="230" cy="180" r="29"/>
+    <circle cx="321" cy="180" r="29"/>
   </g>
 </svg>
