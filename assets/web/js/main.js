@@ -1,6 +1,7 @@
 // Entry point: connects to Homey, picks the dashboard and keeps it live.
 
 import { loadConfig, servedByHomey, writeStoredConfig } from './config.js';
+import { initFit, isFit, setFit } from './fit.js';
 import { $, darkQuery, el } from './dom.js';
 import { DASHBOARD_ICON } from './icons.js';
 import { createClient } from './homey-api.js';
@@ -156,8 +157,10 @@ function openSetup(errorText) {
   // Once dashboards are showing, this is the browser's settings rather than a connection form.
   const connected = state.dashboardId != null && Boolean(config.token);
   $('setup-title').textContent = connected ? 'Settings' : 'Connect to Homey';
+  $('setup-layout').hidden = !connected;
   $('setup-kiosk').hidden = !connected;
   $('setup-done').hidden = !connected;
+  $('fit-toggle').checked = isFit();
   $('kiosk-toggle').checked = isKiosk();
   $('kiosk-screen').hidden = !isKiosk();
   $('kiosk-screen').textContent = {
@@ -189,6 +192,7 @@ function openSetup(errorText) {
 
 $('setup').addEventListener('close', () => pairing.stop());
 $('setup-done').addEventListener('click', () => $('setup').close());
+$('fit-toggle').addEventListener('change', (event) => setFit(event.target.checked));
 // Kiosk mode: this browser always shows the chosen dashboard. Turning it on shows the result straight away;
 // holding the dashboard name brings Settings back.
 $('kiosk-toggle').addEventListener('change', (event) => {
@@ -319,4 +323,5 @@ async function boot() {
 }
 
 initKiosk({ onHold: openUnlock, onIdle: kioskIdle });
+initFit();
 boot();

@@ -174,9 +174,9 @@ export function drawAreaChart(wrap, {
 
     tooltip.replaceChildren(el('strong', null, formatValue(nearest.v)), new Date(nearest.t).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' }));
     tooltip.hidden = false;
-    const left = (px / width) * bounds.width;
+    // In CSS pixels, not the bounds' screen pixels, which differ while the board is zoomed (js/fit.js).
     const tooltipWidth = tooltip.offsetWidth;
-    tooltip.style.left = `${Math.min(Math.max(left - tooltipWidth / 2, 0), bounds.width - tooltipWidth)}px`;
+    tooltip.style.left = `${Math.min(Math.max(px - tooltipWidth / 2, 0), width - tooltipWidth)}px`;
   });
   hitArea.addEventListener('pointerleave', () => {
     crosshair.setAttribute('visibility', 'hidden');

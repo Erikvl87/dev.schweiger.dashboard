@@ -58,6 +58,13 @@
       <label for="setup-token">API key</label>
       <input id="setup-token" name="token" type="password" required autocomplete="off">
       <p>Create one in my.homey.app under Settings → API Keys. It is stored only in this browser.</p>
+      <div id="setup-layout" hidden>
+        <label class="switch-row" for="fit-toggle">
+          <span>Fit to screen width</span>
+          <input id="fit-toggle" type="checkbox" role="switch" switch>
+        </label>
+        <p>Shrinks the dashboard until all its columns fit, instead of scrolling sideways.</p>
+      </div>
       <div id="setup-kiosk" hidden>
         <label for="kiosk-dashboard">Kiosk mode</label>
         <select id="kiosk-dashboard"></select>

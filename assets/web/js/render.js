@@ -2,6 +2,7 @@
 
 import { loadData } from './data.js';
 import { $, el, note } from './dom.js';
+import { fitBoard } from './fit.js';
 import { state } from './state.js';
 import { WIDGETS } from './widgets/index.js';
 
@@ -21,6 +22,7 @@ export async function renderDashboard() {
   if (dashboard == null) {
     $('dashboard-name').textContent = 'Homey';
     note(board, 'No dashboards yet. Create one in the Homey mobile app.');
+    fitBoard();
     return;
   }
   $('dashboard-name').textContent = dashboard.name;
@@ -40,6 +42,7 @@ export async function renderDashboard() {
       renderWidget(widget, columnNode);
     }
   }
+  fitBoard();
 }
 
 function renderWidget(widget, parent) {

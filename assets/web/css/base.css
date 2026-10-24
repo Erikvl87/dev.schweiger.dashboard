@@ -96,6 +96,8 @@ html.kiosk, .kiosk body { overscroll-behavior: none; }
   .board { scroll-snap-type: x mandatory; gap: 16px; }
   .bar h1 { font-size: 28px; }
 }
+/* Fit to width (js/fit.js): columns keep their full width and the board is zoomed out to fit instead. */
+.fit .board { --column-width: 440px; }
 .column { flex: 0 0 var(--column-width); display: flex; flex-direction: column; gap: 28px; min-width: 0; scroll-snap-align: start; }
 /* Auto margins centre the columns when they fit and collapse to zero when they overflow. */
 .column:first-child { margin-left: auto; }
