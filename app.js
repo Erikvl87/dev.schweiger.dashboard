@@ -3,9 +3,10 @@
 const crypto = require('crypto');
 const Homey = require('homey');
 
-// What the dashboard needs, named as in my.homey.app's API key form (group → box).
+// What the dashboard needs, named as in my.homey.app's API key form (group → box); that form lacks the first and the
+// energy one, so those are named by scope.
 const NEEDED_SCOPES = [
-  ['homey.dashboard.readonly', 'Dashboards → View dashboards'],
+  ['homey.dashboard.readonly', 'View dashboards (homey.dashboard.readonly; not offered in the my.homey.app form)'],
   ['homey.device.readonly', 'Devices → View devices'],
   ['homey.device.control', 'Devices → Control devices'],
   ['homey.flow.readonly', 'Flows → View Flows'],
@@ -19,8 +20,8 @@ const NEEDED_SCOPES = [
   ['homey.user.readonly', 'Users → View Users'],
   ['homey.user.self', 'Users → Edit Self User'],
   ['homey.insights.readonly', 'Logs → View Logs'],
-  ['homey.energy.readonly', 'Energy → View energy'],
-  ['homey.presence.self', 'Presence → your own presence'],
+  ['homey.energy.readonly', 'View energy (homey.energy.readonly; not offered in the my.homey.app form)'],
+  ['homey.presence.self', 'Presence → Edit Self Presence'],
   ['homey.system.readonly', 'System → View System'],
   ['homey.geolocation.readonly', 'Location → View Location'],
 ];

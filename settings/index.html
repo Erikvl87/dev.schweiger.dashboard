@@ -8,7 +8,8 @@
       [hidden] { display: none !important; }
       /* Homey's styles turn off text selection; the addresses should stay copyable by hand. */
       .address { word-break: break-all; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; -webkit-user-select: text; user-select: text; }
-      .scopes { padding-left: 1.2em; font-size: 0.9em; line-height: 1.6; }
+      /* Homey's styles turn off text selection; the command has to be copyable. */
+      .command { margin: 8px 0; padding: 10px 12px; border-radius: 8px; background: rgba(128, 128, 128, 0.15); font-family: ui-monospace, Menlo, monospace; font-size: 0.75em; white-space: pre-wrap; word-break: break-all; -webkit-user-select: text; user-select: text; }
       .key-check { margin-top: 6px; }
       .key-check ul { margin: 4px 0 0; padding-left: 1.2em; }
       .pairing { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.25); }
@@ -55,33 +56,22 @@
       <div id="key-form" hidden>
         <div class="homey-form-group">
           <label class="homey-form-label" for="key">New API key</label>
-          <input id="key" class="homey-form-input" type="password" autocomplete="off" placeholder="Paste a key from my.homey.app" />
+          <input id="key" class="homey-form-input" type="password" autocomplete="off" placeholder="Paste the API key" />
         </div>
         <button id="save-key" class="homey-button-primary-full">Save key</button>
         <p id="key-message" class="homey-text-small" role="status" hidden></p>
         <p class="homey-text-small">
-          Create one at my.homey.app → Settings → API Keys and tick these boxes, the indented ones only:
+          The API key form in my.homey.app (Settings → API Keys) has no permission for dashboards, so a key made there
+          only works with <strong>Homey</strong> ticked. That gives full access, and every paired browser holds the key.
         </p>
-        <ul class="scopes">
-          <li><strong>Devices:</strong> View devices, Control devices</li>
-          <li><strong>Flows:</strong> View Flows, Start Flows</li>
-          <li><strong>Moods:</strong> View Moods, Set Moods</li>
-          <li><strong>Variables:</strong> View Variables</li>
-          <li><strong>Zones:</strong> View Zones</li>
-          <li><strong>Notifications:</strong> View Notifications</li>
-          <li><strong>Apps:</strong> View Apps</li>
-          <li><strong>Users:</strong> View Users, Edit Self User</li>
-          <li><strong>Logs:</strong> View Logs</li>
-          <li><strong>Presence:</strong> your own presence</li>
-          <li><strong>System:</strong> View System</li>
-          <li><strong>Location:</strong> View Location</li>
-          <li><strong>Dashboards</strong> and <strong>Energy:</strong> their View box</li>
-        </ul>
         <p class="homey-text-small">
-          Leave the group boxes themselves (Devices, Flows, …) and Homey unticked: they also allow deleting and
-          changing things, and every paired browser holds this key. After saving, this page names anything missing or
-          too broad. Paired browsers keep a copy of the key: to sign them all out, delete it in my.homey.app and save a
-          new one here.
+          A key with only what the dashboard needs can be made with a tool that sets permissions directly, such as
+          homeyctl:
+        </p>
+        <pre class="command">homeyctl token create "Web Dashboard" --no-save --scopes homey.dashboard.readonly,homey.device.readonly,homey.device.control,homey.flow.readonly,homey.flow.start,homey.mood.readonly,homey.mood.set,homey.logic.readonly,homey.zone.readonly,homey.notifications.readonly,homey.app.readonly,homey.user.readonly,homey.user.self,homey.insights.readonly,homey.energy.readonly,homey.presence.self,homey.system.readonly,homey.geolocation.readonly</pre>
+        <p class="homey-text-small">
+          After saving, this page names anything missing or too broad. Paired browsers keep a copy of the key: to sign
+          them all out, delete it and save a new one here.
         </p>
       </div>
     </fieldset>
