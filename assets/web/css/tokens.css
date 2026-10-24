@@ -1,0 +1,117 @@
+/* Design tokens. Light is the default; dark values were sampled from the Homey iPad app. */
+
+:root {
+  color-scheme: light;
+  --bg: #f4f4fb;
+  --bg-top: #fcfcfe;
+  --tile: #f1f1f8;
+  --tile-border: #e7e7ef;
+  --tile-filled: #ffffff;
+  --panel: #ffffff;
+  --card: #ffffff;
+  --track: #e3e3e8;
+  --thumb: #8e8e96;
+  --control: #dfdfe7;
+  --segment-track: #ececf1;
+  --segment-active: #ffffff;
+  --text-primary: #111114;
+  --text-secondary: #6e6e75;
+  --text-muted: #9a9aa1;
+  --active: #f5b207;
+  --active-bg: #fff3d3;
+  --play: #53d300;
+  --shortcut: #016fff;
+  /* How a light's tint is drawn on light backgrounds: darker and richer, so pale whites stay visible. */
+  --tint-lightness: 0.66;
+  --tint-chroma: 2.6;
+  --danger: #d81c1d;
+  --zone-activity: #0082fa;
+  --zone-energy: #0cc56e;
+  --zone-climate: #fe6600;
+  --homey-green: #3fc700;
+  --motion-micro: 0.1s;
+  --motion-fast: 0.2s;
+  --motion-normal: 0.35s;
+  --motion-slow: 0.5s;
+  --curve-fast-in: cubic-bezier(0.25, 0, 0.5, 1);
+  --curve-fast-in-out: cubic-bezier(0.25, 0, 0.25, 1);
+  --grid: #e4e4e9;
+  --axis: #c9c9cf;
+  --series-1: #b61fe0;
+  --series-energy: #2a78d6;
+  --heat-from: #d64b07;
+  --heat-to: #e65f05;
+  --cool-from: #3c8fe8;
+  --cool-to: #2a6fd0;
+  --shadow: 0 5px 22px 0 #00000008, 0 1px 6px 0 #0000001a, 0 1px 2px 0 #00000005;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111219;
+    --bg-top: #111219;
+    --tile: #181920;
+    --tile-border: #2b2c36;
+    --tile-filled: #2b2c36;
+    --panel: #1f2029;
+    --card: #1f2029;
+    --track: #0e0f13;
+    --thumb: #666875;
+    --gauge-outline: #4f515f;
+    --control: #33343e;
+  --segment-track: rgb(0 0 0 / 0.22);
+  --segment-active: #2a2a32;
+    --text-primary: #f5f5f7;
+    --text-secondary: #9fa0a9;
+    --text-muted: #74747c;
+    --active: #f5b207;
+    --active-bg: rgb(245 178 7 / 0.22);
+    --play: #54d303;
+    --tint-lightness: 1;
+    --tint-chroma: 1;
+    --danger: #e0494a;
+    --grid: #2c2c34;
+    --axis: #4a4a53;
+    --series-1: #b347ea;
+  --series-energy: #3987e5;
+  --heat-from: #d64b07;
+  --heat-to: #e65f05;
+  --cool-from: #3987e5;
+  --cool-to: #2a63c4;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111219;
+  --bg-top: #111219;
+  --tile: #181920;
+  --tile-border: #2b2c36;
+  --tile-filled: #2b2c36;
+  --panel: #1f2029;
+  --card: #1f2029;
+  --track: #0e0f13;
+  --thumb: #666875;
+  --gauge-outline: #4f515f;
+  --control: #33343e;
+  --segment-track: rgb(0 0 0 / 0.22);
+  --segment-active: #2a2a32;
+  --text-primary: #f5f5f7;
+  --text-secondary: #9fa0a9;
+  --text-muted: #74747c;
+  --active: #f5b207;
+  --active-bg: rgb(245 178 7 / 0.22);
+  --play: #54d303;
+  --tint-lightness: 1;
+  --tint-chroma: 1;
+  --danger: #e0494a;
+  --grid: #2c2c34;
+  --axis: #4a4a53;
+  --series-1: #b347ea;
+  --series-energy: #3987e5;
+  --heat-from: #d64b07;
+  --heat-to: #e65f05;
+  --cool-from: #3987e5;
+  --cool-to: #2a63c4;
+  --shadow: none;
+}

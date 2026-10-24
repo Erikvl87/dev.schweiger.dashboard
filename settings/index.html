@@ -1,0 +1,340 @@
+<!doctype html>
+<html>
+  <head>
+    <!-- The '/homey.js' script must be included in your settings view to work -->
+    <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+    <style>
+      /* Homey's button styles set display, which would otherwise show hidden buttons. */
+      [hidden] { display: none !important; }
+      /* Homey's styles turn off text selection; the addresses should stay copyable by hand. */
+      .address { word-break: break-all; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; -webkit-user-select: text; user-select: text; }
+      .scopes { padding-left: 1.2em; font-size: 0.9em; line-height: 1.6; }
+      .key-check { margin-top: 6px; }
+      .key-check ul { margin: 4px 0 0; padding-left: 1.2em; }
+      .pairing { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.25); }
+      .pairing:last-child { border-bottom: 0; }
+      .pairing-text { flex: 1; min-width: 0; }
+      .pairing-code { font-family: ui-monospace, Menlo, monospace; font-size: 1.4em; font-weight: 700; letter-spacing: 0.08em; }
+      .pairing-buttons { display: flex; gap: 8px; }
+      .message-error { color: var(--homey-color-red, #d81c1d); }
+      .message-ok { color: #1f7a00; font-weight: 600; }
+      @media (prefers-color-scheme: dark) { .message-ok { color: #6ad43a; } }
+    </style>
+  </head>
+  <body>
+    <header class="homey-header">
+      <h1 class="homey-title">Web Dashboard</h1>
+      <p class="homey-subtitle">Your Homey dashboards in any browser on your home network.</p>
+    </header>
+
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend">Address</legend>
+      <p id="dashboard-url" class="address">…</p>
+      <button id="open" class="homey-button-primary-full">Open dashboard</button>
+      <button id="copy" class="homey-button-secondary-full">Copy link</button>
+      <p id="copy-message" class="homey-text-small message-error" role="status" hidden></p>
+      <p class="homey-text-small">
+        If your browser can't reach that address, use <span id="dashboard-local-url" class="address">…</span>
+      </p>
+    </fieldset>
+
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend">Waiting for approval</legend>
+      <div id="pairings"></div>
+      <p class="homey-text-small">
+        A browser opening the dashboard for the first time shows a code; approve it here if the code matches and that
+        browser gets the API key below. A kiosk tablet shows a code too when someone wants to change its settings.
+      </p>
+    </fieldset>
+
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend">API key</legend>
+      <p id="key-status">…</p>
+      <div id="key-check" class="key-check" hidden></div>
+      <button id="change-key" class="homey-button-secondary-full" hidden>Change key</button>
+      <div id="key-form" hidden>
+        <div class="homey-form-group">
+          <label class="homey-form-label" for="key">New API key</label>
+          <input id="key" class="homey-form-input" type="password" autocomplete="off" placeholder="Paste a key from my.homey.app" />
+        </div>
+        <button id="save-key" class="homey-button-primary-full">Save key</button>
+        <p id="key-message" class="homey-text-small" role="status" hidden></p>
+        <p class="homey-text-small">
+          Create one at my.homey.app → Settings → API Keys and tick these boxes, the indented ones only:
+        </p>
+        <ul class="scopes">
+          <li><strong>Devices:</strong> View devices, Control devices</li>
+          <li><strong>Flows:</strong> View Flows, Start Flows</li>
+          <li><strong>Moods:</strong> View Moods, Set Moods</li>
+          <li><strong>Variables:</strong> View Variables</li>
+          <li><strong>Zones:</strong> View Zones</li>
+          <li><strong>Notifications:</strong> View Notifications</li>
+          <li><strong>Apps:</strong> View Apps</li>
+          <li><strong>Users:</strong> View Users, Edit Self User</li>
+          <li><strong>Logs:</strong> View Logs</li>
+          <li><strong>Presence:</strong> your own presence</li>
+          <li><strong>System:</strong> View System</li>
+          <li><strong>Location:</strong> View Location</li>
+          <li><strong>Dashboards</strong> and <strong>Energy:</strong> their View box</li>
+        </ul>
+        <p class="homey-text-small">
+          Leave the group boxes themselves (Devices, Flows, …) and Homey unticked: they also allow deleting and
+          changing things, and every paired browser holds this key. After saving, this page names anything missing or
+          too broad. Paired browsers keep a copy of the key: to sign them all out, delete it in my.homey.app and save a
+          new one here.
+        </p>
+      </div>
+    </fieldset>
+
+    <script type="text/javascript">
+      function onHomeyReady(Homey) {
+        var openButton = document.getElementById('open');
+        var copyButton = document.getElementById('copy');
+        var pairingsNode = document.getElementById('pairings');
+        var keyStatus = document.getElementById('key-status');
+        var keyInput = document.getElementById('key');
+        var keyMessage = document.getElementById('key-message');
+        var saveButton = document.getElementById('save-key');
+        var keyForm = document.getElementById('key-form');
+        var changeButton = document.getElementById('change-key');
+        var keyCheck = document.getElementById('key-check');
+        var dashboardUrl = null;
+
+        Homey.get('dashboardUrl', function (err, value) {
+          if (err) return Homey.alert(err);
+          dashboardUrl = value;
+          document.getElementById('dashboard-url').textContent = value || 'Restart the app to show the address.';
+          openButton.disabled = !value;
+          copyButton.disabled = !value;
+        });
+        Homey.get('dashboardLocalUrl', function (err, value) {
+          if (err) return Homey.alert(err);
+          document.getElementById('dashboard-local-url').textContent = value || '…';
+        });
+        openButton.addEventListener('click', function () {
+          if (dashboardUrl) Homey.openURL(dashboardUrl);
+        });
+
+        // This page runs in a frame of the Homey app, where the async clipboard API is often blocked; the old
+        // execCommand('copy') usually still works there.
+        function copyWithSelection(text) {
+          var area = document.createElement('textarea');
+          area.value = text;
+          area.setAttribute('readonly', '');
+          area.style.position = 'fixed';
+          area.style.opacity = '0';
+          document.body.appendChild(area);
+          area.select();
+          area.setSelectionRange(0, text.length);
+          var copied = false;
+          try {
+            copied = document.execCommand('copy');
+          } catch (e) {
+            copied = false;
+          }
+          area.remove();
+          return copied ? Promise.resolve() : Promise.reject(new Error('Copy failed'));
+        }
+
+        function copyText(text) {
+          if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text).catch(function () {
+              return copyWithSelection(text);
+            });
+          }
+          return copyWithSelection(text);
+        }
+
+        var copyTimer = null;
+        copyButton.addEventListener('click', function () {
+          if (!dashboardUrl) return;
+          var copyMessage = document.getElementById('copy-message');
+          copyText(dashboardUrl).then(function () {
+            copyMessage.hidden = true;
+            copyButton.textContent = 'Link copied';
+            clearTimeout(copyTimer);
+            copyTimer = setTimeout(function () { copyButton.textContent = 'Copy link'; }, 2500);
+          }, function () {
+            // Last resort: select the address so it can be copied by hand.
+            var range = document.createRange();
+            range.selectNodeContents(document.getElementById('dashboard-url'));
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            copyMessage.textContent = "Couldn't copy here. The address above is selected; copy it from there.";
+            copyMessage.hidden = false;
+          });
+        });
+
+        // ----- Waiting browsers -----
+
+        function minutesAgo(timestamp) {
+          var minutes = Math.floor((Date.now() - timestamp) / 60000);
+          return minutes < 1 ? 'just now' : minutes + ' min ago';
+        }
+
+        function renderPairings(pairings) {
+          pairingsNode.textContent = '';
+          if (!pairings || pairings.length === 0) {
+            var empty = document.createElement('p');
+            empty.className = 'homey-text-small';
+            empty.textContent = 'No browser is waiting.';
+            pairingsNode.appendChild(empty);
+            return;
+          }
+          pairings.forEach(function (pairing) {
+            var row = document.createElement('div');
+            row.className = 'pairing';
+            var text = document.createElement('div');
+            text.className = 'pairing-text';
+            var code = document.createElement('div');
+            code.className = 'pairing-code';
+            code.textContent = pairing.code.slice(0, 3) + ' ' + pairing.code.slice(3);
+            var meta = document.createElement('div');
+            meta.className = 'homey-text-small';
+            meta.textContent = pairing.name
+              + (pairing.purpose === 'unlock' ? ' · wants to change kiosk settings' : ' · wants to connect')
+              + ' · ' + minutesAgo(pairing.createdAt);
+            text.appendChild(code);
+            text.appendChild(meta);
+
+            var buttons = document.createElement('div');
+            buttons.className = 'pairing-buttons';
+            [['approve', 'Approve', 'homey-button-primary-small'], ['decline', 'Decline', 'homey-button-secondary-small']].forEach(function (action) {
+              var button = document.createElement('button');
+              button.className = action[2];
+              button.textContent = action[1];
+              button.addEventListener('click', function () {
+                buttons.querySelectorAll('button').forEach(function (other) { other.disabled = true; });
+                button.classList.add('is-loading');
+                Homey.api('POST', '/pairings/' + pairing.id + '/' + action[0], {}, function (err) {
+                  if (err) Homey.alert(err.message || String(err));
+                  loadPairings();
+                });
+              });
+              buttons.appendChild(button);
+            });
+
+            row.appendChild(text);
+            row.appendChild(buttons);
+            pairingsNode.appendChild(row);
+          });
+        }
+
+        function loadPairings() {
+          Homey.api('GET', '/pairings', null, function (err, pairings) {
+            if (err) return Homey.alert(err.message || String(err));
+            renderPairings(pairings);
+          });
+        }
+
+        // The app announces every change, so a code shows up here as soon as a browser asks.
+        Homey.on('pairings', renderPairings);
+        loadPairings();
+
+        // ----- API key -----
+
+        // With a key saved, the form and its instructions stay out of the way until you want to change the key.
+        // What the saved key may do: missing permissions break parts of the dashboard, broad ones are a risk.
+        function renderKeyCheck(status) {
+          keyCheck.textContent = '';
+          keyCheck.hidden = !(status && status.set && (status.missing || status.broad));
+          if (keyCheck.hidden) return;
+          var addList = function (title, items, className) {
+            var heading = document.createElement('div');
+            heading.className = 'homey-text-small ' + className;
+            heading.textContent = title;
+            var list = document.createElement('ul');
+            list.className = 'homey-text-small';
+            items.forEach(function (item) {
+              var row = document.createElement('li');
+              row.textContent = item;
+              list.appendChild(row);
+            });
+            keyCheck.appendChild(heading);
+            keyCheck.appendChild(list);
+          };
+          if (status.missing && status.missing.length) addList('Missing, so parts of the dashboard won’t work:', status.missing, 'message-error');
+          if (status.broad && status.broad.length) addList('Broader than needed (every paired browser can do this):', status.broad, 'message-error');
+          if (!(status.missing && status.missing.length) && !(status.broad && status.broad.length)) {
+            var ok = document.createElement('div');
+            ok.className = 'homey-text-small message-ok';
+            ok.textContent = 'Permissions OK.';
+            keyCheck.appendChild(ok);
+          }
+        }
+
+        function renderKeyStatus(status, justSaved) {
+          var isSet = Boolean(status && status.set);
+          keyStatus.textContent = !isSet
+            ? 'No key saved yet. Browsers can only be paired once one is.'
+            : justSaved
+              ? 'Saved. The key belongs to ' + status.user + '; browsers can be paired now.'
+              : 'Set, belongs to ' + status.user + '.';
+          keyStatus.className = justSaved ? 'message-ok' : '';
+          renderKeyCheck(status);
+          keyForm.hidden = isSet;
+          changeButton.hidden = !isSet;
+          changeButton.textContent = 'Change key';
+          keyMessage.hidden = true;
+        }
+
+        changeButton.addEventListener('click', function () {
+          var opening = keyForm.hidden;
+          keyForm.hidden = !opening;
+          changeButton.textContent = opening ? 'Keep the current key' : 'Change key';
+          keyMessage.hidden = true;
+          keyInput.value = '';
+          if (opening) keyInput.focus();
+        });
+
+        Homey.api('GET', '/api-key', null, function (err, status) {
+          if (err) {
+            keyForm.hidden = false;
+            return Homey.alert(err.message || String(err));
+          }
+          renderKeyStatus(status);
+        });
+
+        // kind: 'ok', 'error' or 'info'.
+        function showKeyMessage(text, kind) {
+          keyMessage.textContent = text;
+          keyMessage.className = 'homey-text-small message-' + kind;
+          keyMessage.hidden = false;
+        }
+
+        function setSaving(saving) {
+          saveButton.disabled = saving;
+          saveButton.classList.toggle('is-loading', saving);
+          saveButton.textContent = saving ? 'Checking key…' : 'Save key';
+          keyInput.disabled = saving;
+        }
+
+        saveButton.addEventListener('click', function () {
+          var key = keyInput.value.trim();
+          if (!key) return showKeyMessage('Paste a key first.', 'error');
+
+          // The app tries the key on this Homey before saving it, which takes a moment.
+          var answered = false;
+          setSaving(true);
+          showKeyMessage('Checking the key with your Homey…', 'info');
+          var guard = setTimeout(function () {
+            if (answered) return;
+            setSaving(false);
+            showKeyMessage('No answer from Homey. Reopen these settings to see whether the key was saved.', 'error');
+          }, 30000);
+
+          Homey.api('PUT', '/api-key', { key: key }, function (err, status) {
+            answered = true;
+            clearTimeout(guard);
+            setSaving(false);
+            if (err) return showKeyMessage(err.message || String(err), 'error');
+            keyInput.value = '';
+            renderKeyStatus(status, true);
+          });
+        });
+
+        Homey.ready();
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,171 @@
+/* Page layout, header, board, toasts, the connection form and shared motion. */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: linear-gradient(var(--bg-top, var(--bg)), var(--bg) 320px) no-repeat, var(--bg);
+  color: var(--text-primary);
+  font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+
+/* ----- Header ----- */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Opened from the home screen, the page runs under the status bar. */
+  padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(14px);
+}
+.bar h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .spacer { flex: 1; }
+.controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.controls select, .round-button {
+  border: 0;
+  background: var(--control);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+/* The dashboard name doubles as the switch, like the app: a caret, and a list of dashboards under it. */
+.title-switch { -webkit-appearance: none; appearance: none; display: inline-flex; align-items: center; gap: 10px; max-width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; cursor: pointer; }
+#dashboard-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-caret { flex: none; width: 0; height: 0; margin-top: 4px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 8px solid currentColor; }
+.title-switch[data-single] { cursor: default; }
+.title-switch[data-single] .title-caret, .kiosk .title-caret { display: none; }
+.kiosk .title-switch { cursor: default; }
+.dashboard-menu {
+  position: fixed;
+  z-index: 6;
+  width: min(720px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 2px 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+}
+.dashboard-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--tile-border);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+.dashboard-menu button:last-child { border-bottom: 0; }
+.dashboard-menu button[aria-current="true"] { color: var(--shortcut); }
+.dashboard-menu svg { flex: none; width: 20px; height: 20px; }
+.status { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.status[data-state="live"]::before { background: var(--play); }
+.status[data-state="error"]::before { background: var(--danger); }
+/* Kiosk mode (js/kiosk.js): no dashboard menu or Settings button, and touches don't select text, zoom or pull to refresh. */
+.kiosk #settings-button { display: none; }
+html.kiosk, .kiosk body { overscroll-behavior: none; }
+.kiosk body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.kiosk input { -webkit-user-select: text; user-select: text; }
+
+/* ----- Board ----- */
+/* Columns keep their width and scroll sideways, snapping per column; on phones the next column peeks in. */
+.board {
+  --column-width: min(440px, calc(100vw - 56px));
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 4px 16px 32px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 16px;
+}
+@media (max-width: 760px) {
+  .board { scroll-snap-type: x mandatory; gap: 16px; }
+  .bar h1 { font-size: 28px; }
+}
+.column { flex: 0 0 var(--column-width); display: flex; flex-direction: column; gap: 28px; min-width: 0; scroll-snap-align: start; }
+/* Auto margins centre the columns when they fit and collapse to zero when they overflow. */
+.column:first-child { margin-left: auto; }
+.column:last-child { margin-right: auto; }
+.widget { min-width: 0; }
+.widget-title { margin: 0 0 12px; font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+
+.note { color: var(--text-secondary); padding: 8px 2px; font-size: 14px; }
+.note.is-error { color: var(--danger); }
+
+/* ----- Shared motion (Homey web app tokens) ----- */
+.pulse { position: absolute; inset: 0; border-radius: inherit; background: color-mix(in srgb, currentColor 18%, transparent); opacity: 0; pointer-events: none; animation: pulse var(--motion-slow) ease-out 1; }
+@keyframes pulse { 0% { opacity: 1; transform: scale(0.4); } 70% { opacity: 0.35; } to { opacity: 0; transform: scale(1.2); } }
+.eq { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 2px; width: 22px; height: 18px; opacity: 0; transition: opacity 0.5s ease-in-out; }
+.eq[data-active="true"] { opacity: 1; }
+.eq span { width: 3px; height: 16px; border-radius: 2px; background: currentColor; transform: scaleY(var(--from)); animation: eq 0.6s ease-in-out infinite alternate; animation-play-state: paused; }
+.eq[data-active="true"] span { animation-play-state: running; }
+.eq span:nth-child(1) { --from: 0.35; --to: 0.85; }
+.eq span:nth-child(2) { --from: 0.75; --to: 1; animation-delay: 0.15s; }
+.eq span:nth-child(3) { --from: 0.3; --to: 0.95; animation-delay: 0.3s; }
+.eq span:nth-child(4) { --from: 0.55; --to: 0.9; animation-delay: 0.45s; }
+.eq span:nth-child(5) { --from: 0.4; --to: 0.7; animation-delay: 0.6s; }
+@keyframes eq { from { transform: scaleY(var(--from)); } to { transform: scaleY(var(--to)); } }
+@media (hover: hover) {
+  .action:not(:disabled):hover { transform: scale(1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-micro: 0.1s; --motion-fast: 0.1s; --motion-normal: 0.1s; --motion-slow: 0.1s; }
+  .pulse { animation: none; }
+  .eq span { animation: none; transform: scaleY(0.75); }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--tile-border);
+  color: var(--danger);
+  z-index: 20;
+}
+
+dialog {
+  width: min(480px, calc(100vw - 32px));
+  border: 1px solid var(--tile-border);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text-primary);
+  padding: 20px;
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+#setup h2 { margin: 0 0 12px; font-size: 20px; }
+#setup label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: 14px; }
+#setup select, #setup input:not([type="checkbox"]) { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--tile-border); background: var(--bg); }
+#setup p { color: var(--text-secondary); font-size: 13px; margin: 6px 0 0; }
+#setup .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+#setup .primary { background: var(--series-1); color: #ffffff; }
+#setup .setup-error { color: var(--danger); }
+#setup .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 16px; }
+#setup .switch-row input { width: 22px; height: 22px; margin: 0; accent-color: var(--play); }
+#setup .pairing-code {
+  margin: 18px 0 6px;
+  color: var(--text-primary);
+  font: 700 40px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+#setup .pairing-status { min-height: 1.4em; text-align: center; }
+#setup .pairing-status.is-error { color: var(--danger); }

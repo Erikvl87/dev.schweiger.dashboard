@@ -1,0 +1,13 @@
+{
+  "name": "Dashboard",
+  "short_name": "Dashboard",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "background_color": "#f4f4fb",
+  "theme_color": "#2f6df0",
+  "icons": [
+    { "src": "img/home-screen-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "img/home-screen-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

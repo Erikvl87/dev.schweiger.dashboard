@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Homey Dashboards</title>
+<link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<!-- Added to the home screen, the dashboard opens without the browser's address bar. -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="img/home-screen-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/widgets.css">
+<link rel="stylesheet" href="css/sheets.css">
+</head>
+<body>
+<header class="bar">
+  <h1><button id="dashboard-switch" class="title-switch" type="button" aria-haspopup="true" aria-expanded="false"
+    aria-controls="dashboard-menu"><span id="dashboard-name">Homey</span><span class="title-caret" aria-hidden="true"></span></button></h1>
+  <span class="spacer"></span>
+  <div class="controls">
+    <span id="status" class="status">Connecting</span>
+    <button id="settings-button" class="round-button" type="button">Settings</button>
+  </div>
+</header>
+<!-- Outside the header: WebKit draws a child overflowing the header's backdrop blur with artefacts. -->
+<div id="dashboard-menu" class="dashboard-menu" role="menu" aria-label="Dashboards" hidden></div>
+<main id="board" class="board"></main>
+
+<dialog id="setup">
+  <form id="setup-form" method="dialog">
+    <h2 id="setup-title">Connect to Homey</h2>
+    <p id="setup-error" class="setup-error" hidden></p>
+    <div id="setup-pairing" hidden>
+      <p id="pairing-intro">In the Homey app, open Apps → Web Dashboard → Configure and approve this browser if the code
+        matches.</p>
+      <p id="unlock-intro" hidden>To change this tablet's settings, open Apps → Web Dashboard → Configure in the Homey app
+        and approve this code.</p>
+      <p id="pairing-code" class="pairing-code">··· ···</p>
+      <p id="pairing-status" class="pairing-status"></p>
+      <div class="actions">
+        <button id="pairing-use-key" class="round-button" type="button">Use an API key</button>
+        <button id="pairing-cancel" class="round-button" type="button" hidden>Cancel</button>
+        <button id="pairing-retry" class="round-button primary" type="button" hidden></button>
+      </div>
+    </div>
+    <div id="setup-key">
+      <div id="setup-url-group">
+        <label for="setup-url">Homey address</label>
+        <input id="setup-url" name="homeyUrl" type="url" required placeholder="https://192-168-1-2.homey.homeylocal.com">
+        <p>Use the HTTPS <code>*.homey.homeylocal.com</code> address so the browser allows the connection.</p>
+      </div>
+      <label for="setup-token">API key</label>
+      <input id="setup-token" name="token" type="password" required autocomplete="off">
+      <p>Create one in my.homey.app under Settings → API Keys. It is stored only in this browser.</p>
+      <div id="setup-kiosk" hidden>
+        <label for="kiosk-dashboard">Kiosk mode</label>
+        <select id="kiosk-dashboard"></select>
+        <label class="switch-row" for="kiosk-toggle">
+          <span>Always show this dashboard</span>
+          <input id="kiosk-toggle" type="checkbox" role="switch" switch>
+        </label>
+        <p>For a wall tablet: hides the dashboard menu and Settings. After two minutes without a touch it closes open
+          controls and comes back to this dashboard. To change it later, press and hold the dashboard name and approve
+          the code in the Homey app.</p>
+        <p>It also asks the browser to keep the screen on, which browsers only allow over https, and Safari only after a
+          tap. On an iPad, setting Auto-Lock to Never (Settings → Display &amp; Brightness) is the reliable way.</p>
+        <p id="kiosk-screen" hidden></p>
+      </div>
+      <div class="actions">
+        <button id="setup-forget" class="round-button" type="button">Forget</button>
+        <button id="setup-done" class="round-button" type="button" hidden>Done</button>
+        <button class="round-button primary" type="submit">Connect</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  // Browsers don't load JavaScript modules from file:// pages, so explain how to open it instead.
+  if (location.protocol === 'file:') {
+    document.getElementById('board').innerHTML = '<div class="note is-error">This dashboard has to be served over HTTP. ' +
+      'Run <code>python3 -m http.server 8766</code> in its folder and open <code>http://localhost:8766</code>.</div>';
+  }
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

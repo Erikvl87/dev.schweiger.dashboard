@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Our own drawing: the dashboard tile glyph on the app's brand colour. -->
+  <rect width="32" height="32" rx="7" fill="#2f6df0"/>
+  <g fill="#ffffff">
+    <rect x="7" y="7" width="8" height="6.5" rx="1.8"/>
+    <rect x="7" y="15.5" width="8" height="9.5" rx="1.8"/>
+    <rect x="17" y="7" width="8" height="11.5" rx="1.8"/>
+    <rect x="17" y="20.5" width="8" height="4.5" rx="1.8"/>
+  </g>
+</svg>

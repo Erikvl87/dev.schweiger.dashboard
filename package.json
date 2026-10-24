@@ -1,0 +1,10 @@
+{
+  "name": "dev.schweiger.dashboard",
+  "version": "1.0.0",
+  "description": "Your Homey dashboards in any browser.",
+  "main": "app.js",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "serve": "python3 -m http.server 8766 --directory assets/web"
+  }
+}
