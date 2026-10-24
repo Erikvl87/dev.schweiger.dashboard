@@ -1,5 +1,8 @@
 {
   "1.0.0": {
     "en": "First release: your Homey dashboards in any browser, with browser pairing and kiosk mode."
+  },
+  "1.0.1": {
+    "en": "Settings: explains that keys from my.homey.app need full access for dashboards, and how to make a narrower one."
   }
 }
