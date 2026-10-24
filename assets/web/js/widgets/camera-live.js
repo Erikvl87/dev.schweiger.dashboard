@@ -4,7 +4,7 @@
 
 import { findDevice } from '../devices.js';
 import { el, note } from '../dom.js';
-import { EXPAND_ICON } from '../icons.js';
+import { COLLAPSE_ICON, EXPAND_ICON } from '../icons.js';
 import { state } from '../state.js';
 
 const KEEP_ALIVE = 30_000; // Homey drops a stream after two minutes without one.
@@ -45,13 +45,23 @@ export function mountCameraLive({ body, widget }) {
   overlay.append(status);
   const fullscreen = el('button', 'camera-fullscreen');
   fullscreen.type = 'button';
-  fullscreen.innerHTML = EXPAND_ICON;
-  fullscreen.setAttribute('aria-label', 'Full screen');
+  // The same button leaves full screen again: a kiosk has no Esc key.
+  const isFullscreen = () => (document.fullscreenElement ?? document.webkitFullscreenElement) === frame;
+  const onFullscreenChange = () => {
+    fullscreen.innerHTML = isFullscreen() ? COLLAPSE_ICON : EXPAND_ICON;
+    fullscreen.setAttribute('aria-label', isFullscreen() ? 'Exit full screen' : 'Full screen');
+  };
+  onFullscreenChange();
   fullscreen.addEventListener('click', () => {
-    if (frame.requestFullscreen) frame.requestFullscreen().catch(() => {});
+    if (isFullscreen()) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else document.webkitExitFullscreen?.();
+    } else if (frame.requestFullscreen) frame.requestFullscreen().catch(() => {});
     else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
     else player.webkitEnterFullscreen?.();
   });
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
   frame.append(player, overlay, fullscreen);
   body.append(frame);
 
@@ -123,6 +133,8 @@ export function mountCameraLive({ body, widget }) {
   return () => {
     unmounted = true;
     document.removeEventListener('visibilitychange', onVisibility);
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
     stop();
   };
 }
