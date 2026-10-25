@@ -3,13 +3,11 @@
 // comes back. A developer install (`homey app install`) usually keeps the version, so it always reloads; a restart
 // never does. The reload waits until nobody has touched the screen for a minute. Only when served by the app.
 
-import { servedByHomey } from './config.js';
+import { APP_ID, servedByHomey } from './config.js';
 import { toast } from './dom.js';
 import { subscribe } from './realtime.js';
 import { STORAGE_KEY, state } from './state.js';
 
-// The page lives at /app/<app id>/assets/web/.
-const APP_ID = location.pathname.split('/')[2];
 const IDLE = 60_000;
 const RELOADED_KEY = `${STORAGE_KEY}:reloaded`;
 

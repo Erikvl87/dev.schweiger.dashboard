@@ -1,5 +1,6 @@
 // Every widget type the dashboard can render: its default title, the Homey data it needs, and how to mount it.
 // A widget's mount function receives { widget, section, body, setTitle } and may return a cleanup function.
+// fill: a picture or page that stretches to fill the screen when highlighted full screen (others are zoomed to fit).
 
 import { mountAppWidget } from './app-widget.js';
 import { mountBatteries, mountLowBatteries } from './batteries.js';
@@ -46,9 +47,9 @@ export const WIDGETS = {
   thermostat: { needs: ['devices'], mount: mountThermostat },
   notifications_timeline_large: { title: 'Timeline', needs: ['notifications'], mount: mountTimeline },
   notifications_timeline_small: { title: 'Timeline', needs: ['notifications'], mount: (context) => mountTimeline({ ...context, small: true }) },
-  device_camera_snapshot: { needs: ['devices'], mount: mountCameraSnapshot },
-  device_camera_live: { needs: ['devices'], mount: mountCameraLive },
-  web_frame: { title: 'Web Frame', mount: mountWebFrame },
+  device_camera_snapshot: { needs: ['devices'], fill: true, mount: mountCameraSnapshot },
+  device_camera_live: { needs: ['devices'], fill: true, mount: mountCameraLive },
+  web_frame: { title: 'Web Frame', fill: true, mount: mountWebFrame },
   energy_dynamic_prices: { title: 'Electricity Prices', mount: mountEnergyPrices },
   logic_variables: { title: 'Variables', needs: ['variables'], mount: mountVariables },
   note: { mount: mountNote },

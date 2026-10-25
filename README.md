@@ -19,6 +19,16 @@ Pick the dashboard by tapping its name at the top (as in the app), with a dashbo
 
 **Fit to screen width**: by default the columns keep their width and scroll sideways. Turn on *Fit to screen width* in the dashboard's **Settings** and that browser shrinks the whole dashboard until every column fits instead (it never enlarges it). `?fit` does the same for one address without storing it.
 
+**Screens**: every browser showing the dashboard is a screen with a name, so flow cards can aim at one ("Hallway tablet"). You name a browser when you approve it (the field starts as e.g. *Safari on iPad*). The app's settings in the Homey app list all screens to rename or forget them, and the dashboard's **Settings** shows its own name. A browser keeps a random id in its storage, so the name survives reloads and **Forget**; clearing the browser's data makes it a new screen. Browsers paired before screens existed, or set up with a typed key, show up under their browser name. A private window can't keep an id, so it only follows cards aimed at all screens.
+
+**Flow cards**: put one widget or dashboard in front of everyone, or of one screen, e.g. the front-door camera on the hallway tablet when the doorbell rings. Each card's first choice is the screen: *All screens* or a named one.
+
+- *Highlight a widget* (action): pick the screen, a dashboard, then one of its widgets, *large* or *full screen*, and optionally the seconds after which it closes. That screen (or every open one) shows it over whatever it is showing; large zooms the widget up on a card, full screen fills the window (a camera or web frame edge to edge, other widgets zoomed to fit). A screen showing that dashboard lifts its own widget, so it keeps what it was doing (a page opened in a web frame, an app widget's state); other screens show a copy. A new highlight replaces what those screens showed.
+- *Close the widget highlight on …* (action), *A widget highlight is open on …* (condition; *Any screen* or one), and *The widget highlight was closed* (trigger, with the widget, its dashboard, the screen it was aimed at and who closed it: `screen`, `flow` or `timer`; not when a new highlight replaces it).
+- *Show a dashboard* (action): switches that screen (or every open one) to that dashboard; behind a highlight, it shows once the highlight closes. A kiosk tablet counts it as a touch and goes back to its own dashboard after two minutes alone.
+
+Closing a highlight on one screen (✕, Esc or a tap beside it) closes it on every screen showing it. Kiosk tablets keep it open when left alone. It is kept in memory, so an app restart closes it. Only dashboards served by the app show highlights.
+
 On an iPad, *Share → Add to Home Screen* opens the dashboard without Safari's address bar. The home-screen app has its own storage, so it pairs once more.
 
 ## Developing
@@ -47,22 +57,29 @@ Routes in `api.js` (`/api/app/dev.schweiger.dashboard/…`):
 | `GET /pairing/:id` | public | the browser polls with its secret `id`: `waiting`, `declined`, `expired`, or once `{ status: 'approved', token }` (no token for `unlock`) |
 | `GET /pairings`, `POST /pairings/:id/approve`, `POST /pairings/:id/decline` | settings page | waiting browsers; changes are also sent as the realtime event `pairings` |
 | `GET /api-key`, `PUT /api-key` | settings page | key status; `PUT` validates and stores the key (an empty key removes it) |
+| `POST /screen-hello` | public | a dashboard says which screen it is: `{ token, id, name }`; acts only if Homey accepts the token, adds an unknown screen under `name`, returns `{ name }` |
+| `GET /screens`, `PUT /screens/:id`, `DELETE /screens/:id` | settings page | list, rename (`{ name }`) and forget screens; changes are also sent as the realtime event `screens`. Approving a pairing takes `{ name }` too |
+| `GET /highlight?screen=<id>` | public | that screen's highlight `{ highlight: { id, target, dashboardId, widgetId, name, dashboardName, size } }` or `{ highlight: null }` (the all-screens one without a known id); changes are sent as the realtime event `highlight` with every screen's |
+| `POST /highlight/close` | public | a dashboard closed a highlight: `{ token, id }`; acts only if Homey accepts the token, on every screen showing that `id` |
 
 Waiting browsers are kept in memory for 10 minutes, at most 10 at a time; an app restart drops them and the browsers ask for a new code. Without a saved key, `POST /pairing` refuses. Served by the app, a browser whose key Homey rejects (401) forgets it and pairs again.
 
 ## Layout
 
 ```
-app.js                  dashboard address, API key, pairing
-api.js                  app API routes for pairing and the key
-settings/index.html     settings page: address, waiting browsers, API key
+app.js                  dashboard address, API key, pairing, widget highlight flow cards
+api.js                  app API routes for pairing, the key and the highlight
+.homeycompose/flow/     flow cards (app.json is generated from .homeycompose/)
+settings/index.html     settings page: address, waiting browsers, screens, API key
 assets/web/
   index.html            markup only
   css/                  tokens (light/dark), base layout, widgets, popups
   js/main.js            entry: connect, pick the dashboard, live updates, setup form
   js/pairing.js         asks the app for a code and waits for approval
+  js/screen.js          this browser's lasting screen id and the name the app gives it
   js/kiosk.js           kiosk mode: fixed dashboard, screen on, idle reset, hold the name for Settings
   js/fit.js             fit to screen width: zooms the board out so all columns fit
+  js/highlight.js       shows the widget a flow highlighted, large or full screen
   js/mood-orb.js        mood icons: a gradient of the colours a mood sets (the Homey web app's method)
   manifest.json, img/   Add to Home Screen
   js/render.js          renders a dashboard's columns of widgets
@@ -79,7 +96,8 @@ assets/web/
 
 1. Look at how the mobile app stores it: `GET /api/manager/dashboards/dashboard`.
 2. Add `assets/web/js/widgets/<name>.js` exporting `mount<Name>({ widget, section, body, setTitle })`. Return a cleanup function if it subscribes to anything.
-3. Register it in `assets/web/js/widgets/index.js` with the Homey collections it needs (see `DATA_SOURCES` in `data.js`).
+3. Register it in `assets/web/js/widgets/index.js` with the Homey collections it needs (see `DATA_SOURCES` in `data.js`). Mark it `fill: true` if it is a picture or page that should fill the screen when highlighted full screen.
+4. Give it a readable name for the highlight card in `WIDGET_TYPES` in `app.js`.
 
 ## Icons and licensing
 

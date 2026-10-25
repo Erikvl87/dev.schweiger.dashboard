@@ -32,6 +32,11 @@
 <div id="dashboard-menu" class="dashboard-menu" role="menu" aria-label="Dashboards" hidden></div>
 <main id="board" class="board"></main>
 
+<!-- A widget highlighted by a flow (js/highlight.js): the board's own widget is lifted over this backdrop, or a copy is
+     mounted in the holder when the board shows another dashboard. -->
+<div id="highlight-backdrop" class="highlight-backdrop" popover="manual"></div>
+<div id="highlight-holder"></div>
+
 <dialog id="setup">
   <form id="setup-form" method="dialog">
     <h2 id="setup-title">Connect to Homey</h2>
@@ -58,6 +63,11 @@
       <label for="setup-token">API key</label>
       <input id="setup-token" name="token" type="password" required autocomplete="off">
       <p>Create one in my.homey.app under Settings → API Keys. It is stored only in this browser.</p>
+      <div id="setup-screen" hidden>
+        <label>This screen</label>
+        <p><strong id="screen-name"></strong>. Flow cards can highlight a widget or show a dashboard on this screen by
+          that name. Rename it in the Homey app: Apps → Web Dashboard → Configure.</p>
+      </div>
       <div id="setup-layout" hidden>
         <label class="switch-row" for="fit-toggle">
           <span>Fit to screen width</span>

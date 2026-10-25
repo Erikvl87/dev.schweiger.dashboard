@@ -9,7 +9,9 @@ export const WARNING_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-h
 
 export const EXPAND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-6 6M4 20l6-6"/></svg>';
 
-export const COLLAPSE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l6-6M10 14l-6 6"/></svg>';
+export const CLOSE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+export const COLLAPSE_ICON ='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l6-6M10 14l-6 6"/></svg>';
 
 export const PLAY_ICON = '<svg viewBox="0 0 14 16" fill="currentColor" aria-hidden="true"><path d="M1 1.8v12.4a1 1 0 0 0 1.5.9l10.3-6.2a1 1 0 0 0 0-1.8L2.5.9A1 1 0 0 0 1 1.8z"/></svg>';
 

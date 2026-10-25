@@ -1,0 +1,33 @@
+{
+  "title": {
+    "en": "Show a dashboard"
+  },
+  "titleFormatted": {
+    "en": "Show [[dashboard]] on [[screen]]"
+  },
+  "hint": {
+    "en": "Switches that screen (or every open one) to this dashboard. A kiosk tablet goes back to its own dashboard after two minutes without a touch."
+  },
+  "args": [
+    {
+      "type": "autocomplete",
+      "name": "screen",
+      "title": {
+        "en": "Screen"
+      },
+      "placeholder": {
+        "en": "All screens"
+      }
+    },
+    {
+      "type": "autocomplete",
+      "name": "dashboard",
+      "title": {
+        "en": "Dashboard"
+      },
+      "placeholder": {
+        "en": "Dashboard"
+      }
+    }
+  ]
+}

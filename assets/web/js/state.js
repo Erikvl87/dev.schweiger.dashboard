@@ -16,4 +16,6 @@ export const state = {
   dataErrors: {},
   locales: new Map(),
   cleanups: [],
+  screenName: null, // What the app calls this browser (screen.js).
+  highlighted: null, // The widget a flow highlighted (highlight.js), shown over the dashboard.
 };

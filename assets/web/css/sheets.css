@@ -250,3 +250,45 @@ dialog.zone-sheet::backdrop { background: rgb(0 0 0 / 0.55); }
 .thermostat.is-list .thermostat-steps { width: 72px; background: transparent; border-left: 1px solid #2b2c36; }
 .thermostat.is-list .thermostat-steps button + button { border-top: 1px solid #2b2c36; }
 .zone-light.is-widget .zone-square.is-small { width: 48px; height: 48px; border-radius: 12px; }
+
+/* ----- Highlight (js/highlight.js): one widget a flow put on every screen ----- */
+/* Both are popovers: the widget (the board's own, lifted out of its column without moving it, or a copy) over the
+   backdrop. --unzoom undoes the widget's zoom for its padding and close button. */
+.highlight-backdrop { inset: 0; width: auto; height: auto; margin: 0; padding: 0; border: 0; background: rgb(0 0 0 / 0.6); }
+/* Large: the widget at its column width, zoomed up on a card over the dimmed dashboard. */
+.widget.highlight {
+  box-sizing: content-box;
+  width: 440px;
+  max-width: none;
+  max-height: none;
+  padding: calc(64px * var(--unzoom, 1)) calc(20px * var(--unzoom, 1)) calc(20px * var(--unzoom, 1));
+  border: 0;
+  border-radius: calc(28px * var(--unzoom, 1));
+  background: var(--bg);
+  color: inherit;
+  overflow: hidden;
+  /* The board behind a full-screen highlight is hidden, and its own widget with it. */
+  visibility: visible;
+}
+.highlight .highlight-close { zoom: var(--unzoom, 1); position: absolute; top: 14px; right: 14px; z-index: 1; background: var(--control); color: var(--text-primary); }
+/* Full screen: the whole window, the widget zoomed to fit in the middle. */
+:root:has(.highlight-backdrop.is-fullscreen:popover-open) { overflow: hidden; }
+/* A full-screen highlight covers the whole board, so stop drawing it: its widgets keep running, but a slow device no
+   longer paints them (live video, charts, frames) behind the highlight as well. */
+:root:has(.highlight-backdrop.is-fullscreen:popover-open) #board { visibility: hidden; }
+.highlight-backdrop.is-fullscreen { background: var(--bg); }
+.widget.highlight.is-fullscreen {
+  padding: calc(max(64px, env(safe-area-inset-top)) * var(--unzoom, 1)) calc(16px * var(--unzoom, 1)) calc(16px * var(--unzoom, 1));
+  border-radius: 0;
+}
+.highlight.is-fullscreen .highlight-close { position: fixed; top: max(14px, env(safe-area-inset-top)); }
+/* Full screen picture or page (widgets marked `fill`): edge to edge on black, without the title. */
+/* 100%, not 100vw: the window less its scrollbar, which the page behind keeps showing otherwise. */
+.highlight-backdrop.is-fullscreen.is-fill { background: #000000; }
+.widget.highlight.is-fullscreen.is-fill { box-sizing: border-box; display: flex; flex-direction: column; width: 100%; height: 100%; margin: 0; padding: 0; background: #000000; }
+.highlight.is-fill .highlight-close { background: rgb(0 0 0 / 0.45); color: #ffffff; }
+.is-fullscreen.is-fill .widget-title { display: none; }
+.is-fullscreen.is-fill .widget-body { flex: 1; min-height: 0; }
+/* !important: the web frame sets its height as an inline aspect ratio. */
+.is-fullscreen.is-fill .snapshot, .is-fullscreen.is-fill .web-frame { height: 100%; border-radius: 0; aspect-ratio: auto !important; }
+.is-fullscreen.is-fill .snapshot img, .is-fullscreen.is-fill .camera-live video { width: 100%; height: 100%; aspect-ratio: auto; object-fit: contain; }

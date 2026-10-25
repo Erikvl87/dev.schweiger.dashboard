@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "A widget highlight !{{is|isn't}} open"
+  },
+  "hint": {
+    "en": "Whether that screen (or any screen) shows a highlighted widget right now."
+  },
+  "titleFormatted": {
+    "en": "A widget highlight !{{is|isn't}} open on [[screen]]"
+  },
+  "args": [
+    {
+      "type": "autocomplete",
+      "name": "screen",
+      "title": {
+        "en": "Screen"
+      },
+      "placeholder": {
+        "en": "Any screen"
+      }
+    }
+  ]
+}

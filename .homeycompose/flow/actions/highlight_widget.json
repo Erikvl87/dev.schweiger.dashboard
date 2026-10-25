@@ -1,0 +1,78 @@
+{
+  "title": {
+    "en": "Highlight a widget"
+  },
+  "titleFormatted": {
+    "en": "On [[screen]], highlight [[dashboard]] › [[widget]] [[size]], closing after [[seconds]] seconds"
+  },
+  "hint": {
+    "en": "Shows the widget on that screen (or every open one), over whatever it is showing, until it is closed on a screen, by a flow or after the seconds given (leave empty to keep it open). It replaces what those screens highlighted."
+  },
+  "args": [
+    {
+      "type": "autocomplete",
+      "name": "screen",
+      "title": {
+        "en": "Screen"
+      },
+      "placeholder": {
+        "en": "All screens"
+      }
+    },
+    {
+      "type": "autocomplete",
+      "name": "dashboard",
+      "title": {
+        "en": "Dashboard"
+      },
+      "placeholder": {
+        "en": "Dashboard"
+      }
+    },
+    {
+      "type": "autocomplete",
+      "name": "widget",
+      "title": {
+        "en": "Widget"
+      },
+      "placeholder": {
+        "en": "Widget"
+      }
+    },
+    {
+      "type": "dropdown",
+      "name": "size",
+      "title": {
+        "en": "Size"
+      },
+      "values": [
+        {
+          "id": "large",
+          "title": {
+            "en": "large"
+          }
+        },
+        {
+          "id": "fullscreen",
+          "title": {
+            "en": "full screen"
+          }
+        }
+      ]
+    },
+    {
+      "type": "number",
+      "name": "seconds",
+      "required": false,
+      "min": 0,
+      "max": 86400,
+      "step": 1,
+      "title": {
+        "en": "Close after"
+      },
+      "placeholder": {
+        "en": "never"
+      }
+    }
+  ]
+}

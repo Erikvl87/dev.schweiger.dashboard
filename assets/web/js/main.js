@@ -1,14 +1,16 @@
 // Entry point: connects to Homey, picks the dashboard and keeps it live.
 
-import { loadConfig, servedByHomey, writeStoredConfig } from './config.js';
+import { APP_ID, loadConfig, servedByHomey, writeStoredConfig } from './config.js';
 import { initFit, isFit, setFit } from './fit.js';
 import { $, darkQuery, el } from './dom.js';
 import { DASHBOARD_ICON } from './icons.js';
 import { createClient } from './homey-api.js';
+import { fetchHighlight, isHighlightOpen, showHighlight, watchHighlight } from './highlight.js';
 import { initKiosk, isKiosk, kioskHome, resetIdle, screenState, setKiosk, settleKioskHome } from './kiosk.js';
 import { createPairing } from './pairing.js';
 import { createRealtime, loadScript } from './realtime.js';
 import { renderDashboard } from './render.js';
+import { registerScreen, screenId, watchScreen } from './screen.js';
 import { STORAGE_KEY, params, state } from './state.js';
 import { checkForUpdate, watchUpdates } from './updates.js';
 
@@ -66,6 +68,7 @@ async function refreshAll() {
   chooseDashboard();
   populateDashboardMenu();
   await renderDashboard();
+  showHighlight();
 }
 
 function setStatus(stateName, text) {
@@ -85,6 +88,7 @@ function watchHomey() {
     chooseDashboard();
     populateDashboardMenu();
     if (isShownOrLinked(dashboard.id)) renderDashboard();
+    showHighlight();
   };
   state.realtime.on('homey:manager:dashboards', 'dashboard.create', onDashboardChange);
   state.realtime.on('homey:manager:dashboards', 'dashboard.update', onDashboardChange);
@@ -94,7 +98,17 @@ function watchHomey() {
     chooseDashboard();
     populateDashboardMenu();
     if (wasShownOrLinked) renderDashboard();
+    showHighlight();
   });
+  // The "Show a dashboard" flow card, for every screen or this one. A kiosk tablet counts it as a touch, so it stays
+  // two minutes before going home.
+  if (servedByHomey) {
+    state.realtime.on(`homey:app:${APP_ID}`, 'show-dashboard', (data) => {
+      if (data?.screenId !== 'all' && data?.screenId !== screenId()) return;
+      resetIdle();
+      showDashboard(data?.dashboardId);
+    });
+  }
   // Favorites live on the user, so re-render when they change in the mobile app.
   state.realtime.on('homey:manager:users', 'user.update', async (user) => {
     if (user?.id !== state.me?.id) return;
@@ -143,13 +157,14 @@ function openUnlock() {
 }
 
 // A kiosk tablet left alone: close sheets and settings (not a pairing in progress, it is needed to get going) and go
-// back to its dashboard.
+// back to its dashboard. Not while a flow highlights a widget, which it put there for this tablet to show: the tablet
+// goes back at the next idle check after that closes.
 function kioskIdle() {
   for (const dialog of document.querySelectorAll('dialog[open]')) {
     if (dialog.id !== 'setup' || setupMode !== 'pairing') dialog.close();
   }
   const home = kioskHome();
-  if (home && home !== state.dashboardId && state.dashboards[home]) showDashboard(home);
+  if (home && home !== state.dashboardId && state.dashboards[home] && !isHighlightOpen()) showDashboard(home);
 }
 
 function openSetup(errorText) {
@@ -159,6 +174,8 @@ function openSetup(errorText) {
   const connected = state.dashboardId != null && Boolean(config.token);
   $('setup-title').textContent = connected ? 'Settings' : 'Connect to Homey';
   $('setup-layout').hidden = !connected;
+  $('setup-screen').hidden = !connected || !state.screenName;
+  $('screen-name').textContent = state.screenName ?? '';
   $('setup-kiosk').hidden = !connected;
   $('setup-done').hidden = !connected;
   $('fit-toggle').checked = isFit();
@@ -300,6 +317,8 @@ async function boot() {
     const onReconnect = () => {
       // Homey may have restarted with an updated app while the connection was down.
       checkForUpdate('reconnected');
+      registerScreen();
+      fetchHighlight();
       refreshAll().catch((error) => {
         if (isRevokedKey(error)) pairAgain();
         else console.error(error);
@@ -312,6 +331,8 @@ async function boot() {
     state.realtime = createRealtime(state.client, { onStatus, onReconnect });
     watchHomey();
     watchUpdates();
+    watchScreen();
+    watchHighlight();
   } catch (error) {
     setStatus('error', 'No live updates');
     console.error(error);

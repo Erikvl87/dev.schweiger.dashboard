@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Close the widget highlight"
+  },
+  "hint": {
+    "en": "Closes the highlight that screen shows (or all of them), on every screen showing it."
+  },
+  "titleFormatted": {
+    "en": "Close the widget highlight on [[screen]]"
+  },
+  "args": [
+    {
+      "type": "autocomplete",
+      "name": "screen",
+      "title": {
+        "en": "Screen"
+      },
+      "placeholder": {
+        "en": "All screens"
+      }
+    }
+  ]
+}

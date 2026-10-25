@@ -1,0 +1,42 @@
+{
+  "title": {
+    "en": "The widget highlight was closed"
+  },
+  "hint": {
+    "en": "Not when a new highlight replaces it."
+  },
+  "tokens": [
+    {
+      "name": "widget",
+      "type": "string",
+      "title": {
+        "en": "Widget"
+      },
+      "example": "Front door"
+    },
+    {
+      "name": "dashboard",
+      "type": "string",
+      "title": {
+        "en": "Dashboard"
+      },
+      "example": "Hallway"
+    },
+    {
+      "name": "screen",
+      "type": "string",
+      "title": {
+        "en": "Screen"
+      },
+      "example": "Hallway tablet"
+    },
+    {
+      "name": "closed_by",
+      "type": "string",
+      "title": {
+        "en": "Closed by"
+      },
+      "example": "screen"
+    }
+  ]
+}
