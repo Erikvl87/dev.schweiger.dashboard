@@ -10,6 +10,7 @@ import { createPairing } from './pairing.js';
 import { createRealtime, loadScript } from './realtime.js';
 import { renderDashboard } from './render.js';
 import { STORAGE_KEY, params, state } from './state.js';
+import { checkForUpdate, watchUpdates } from './updates.js';
 
 // The dashboard name is the switch: it lists the dashboards, the shown one highlighted. Not in kiosk mode.
 function populateDashboardMenu() {
@@ -296,16 +297,21 @@ async function boot() {
   try {
     // Homey serves the socket.io client matching its own server version.
     await loadScript(`${state.client.base}/socket.io/socket.io.js`);
-    const onReconnect = () => refreshAll().catch((error) => {
-      if (isRevokedKey(error)) pairAgain();
-      else console.error(error);
-    });
+    const onReconnect = () => {
+      // Homey may have restarted with an updated app while the connection was down.
+      checkForUpdate('reconnected');
+      refreshAll().catch((error) => {
+        if (isRevokedKey(error)) pairAgain();
+        else console.error(error);
+      });
+    };
     // Once pairAgain() dropped the key, the old connection's handshake errors are only noise.
     const onStatus = (name, text) => {
       if (state.config.token) setStatus(name, text);
     };
     state.realtime = createRealtime(state.client, { onStatus, onReconnect });
     watchHomey();
+    watchUpdates();
   } catch (error) {
     setStatus('error', 'No live updates');
     console.error(error);
