@@ -17,6 +17,8 @@ Pick the dashboard by tapping its name at the top (as in the app), with a dashbo
 
 **Kiosk mode** (for a wall tablet): in the dashboard's **Settings**, choose a dashboard and turn on *Always show this dashboard*. That browser then shows only that dashboard: tapping its name no longer switches, and the Settings button is gone. It keeps the screen on, and after two minutes without a touch it closes open controls and returns to that dashboard. To change it, press and hold the dashboard name: the tablet shows a code, and approving it in the app's settings in the Homey app opens Settings on the tablet. That approval hands out nothing, and after two minutes without a touch the tablet locks again. `?kiosk&dashboard=<name>` does the same for one address without storing it.
 
+**Fit to screen width**: by default the columns keep their width and scroll sideways. Turn on *Fit to screen width* in the dashboard's **Settings** and that browser shrinks the whole dashboard until every column fits instead (it never enlarges it). `?fit` does the same for one address without storing it.
+
 On an iPad, *Share → Add to Home Screen* opens the dashboard without Safari's address bar. The home-screen app has its own storage, so it pairs once more.
 
 ## Developing
@@ -60,6 +62,7 @@ assets/web/
   js/main.js            entry: connect, pick the dashboard, live updates, setup form
   js/pairing.js         asks the app for a code and waits for approval
   js/kiosk.js           kiosk mode: fixed dashboard, screen on, idle reset, hold the name for Settings
+  js/fit.js             fit to screen width: zooms the board out so all columns fit
   js/mood-orb.js        mood icons: a gradient of the colours a mood sets (the Homey web app's method)
   manifest.json, img/   Add to Home Screen
   js/render.js          renders a dashboard's columns of widgets
