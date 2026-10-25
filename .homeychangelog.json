@@ -4,5 +4,8 @@
   },
   "1.0.1": {
     "en": "Settings: explains that keys from my.homey.app need full access for dashboards, and how to make a narrower one."
+  },
+  "1.1.0": {
+    "en": "New: a Fit to screen width option in the dashboard's Settings, and open dashboards reload by themselves after an app update. Fixed: the live camera's full-screen button now also exits full screen, zone device widgets set to all device types show their devices again, and app widgets can only reach their own API."
   }
 }
