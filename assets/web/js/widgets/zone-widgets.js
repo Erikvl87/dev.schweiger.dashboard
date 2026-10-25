@@ -24,9 +24,10 @@ export function mountZoneDevices({ body, widget, setTitle }) {
   if (!requireData(body, 'devices', 'zones')) return;
   const zone = findZone(body, widget, setTitle);
   if (zone == null) return;
-  const { deviceClasses = [], subzones = true, hideHiddenDevices = false } = widget.data;
+  const { deviceClasses, subzones = true, hideHiddenDevices = false } = widget.data;
+  // The app stores null for "all device classes".
   const devices = zoneDevices(zone.id, { recursive: subzones !== false })
-    .filter((device) => deviceClasses.length === 0 || isClass(device, ...deviceClasses))
+    .filter((device) => !deviceClasses?.length || isClass(device, ...deviceClasses))
     .filter((device) => !(hideHiddenDevices && device.hidden))
     .sort(byName);
   if (devices.length === 0) return note(body, 'No devices in this zone.');
