@@ -74,11 +74,14 @@ async function handleWidgetMessage(host, source, { event, data, callbackId }) {
     case 'api': {
       const method = String(data?.method ?? 'GET').toUpperCase();
       const path = String(data?.path ?? '/');
-      return state.client.api(
-        method,
-        `/api/app/${host.appId}/widget/${host.widgetId}/${host.instanceId}${path.startsWith('/') ? path : `/${path}`}`,
-        data?.body,
-      );
+      // A widget only reaches its own widget API. The URL is resolved first: dot segments ("..", "%2e%2e") in the
+      // path would otherwise lead this page's API key to any other part of Homey's API.
+      const base = new URL(`/api/app/${host.appId}/widget/${host.widgetId}/${host.instanceId}`, state.client.base);
+      const url = new URL(base.pathname + (path.startsWith('/') ? path : `/${path}`), base);
+      if (url.origin !== base.origin || !url.pathname.startsWith(`${base.pathname}/`)) {
+        throw new Error('Widgets can only call their own API');
+      }
+      return state.client.api(method, url.pathname + url.search, data?.body);
     }
     case 'registerRealtimeListener':
       // Every realtime event is delivered as a callback on the id of the registration message.
