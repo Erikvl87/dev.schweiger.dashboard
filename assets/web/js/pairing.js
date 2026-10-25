@@ -3,6 +3,7 @@
 // purpose 'unlock' to open its settings; that approval hands out nothing. Only used when served by the app.
 
 import { $ } from './dom.js';
+import { browserName, screenId } from './screen.js';
 
 // The page lives at /app/<app id>/assets/web/; the app's API at /api/app/<app id>.
 const APP_API = `/api/app/${location.pathname.split('/')[2]}`;
@@ -18,25 +19,6 @@ async function call(method, path, body) {
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.error_description ?? data?.error ?? `${response.status} ${response.statusText}`);
   return data;
-}
-
-// A name you can recognise in the settings page, e.g. "Safari on iPad".
-function browserName() {
-  const ua = navigator.userAgent;
-  const browser = /Edg/.test(ua) ? 'Edge'
-    : /Firefox|FxiOS/.test(ua) ? 'Firefox'
-      : /Chrome|CriOS/.test(ua) ? 'Chrome'
-        : /Safari/.test(ua) ? 'Safari'
-          : 'Browser';
-  // iPads ask for the desktop site, so they look like a Mac with a touch screen.
-  const device = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'iPad'
-    : /iPhone/.test(ua) ? 'iPhone'
-      : /Android/.test(ua) ? 'Android'
-        : /Macintosh/.test(ua) ? 'Mac'
-          : /Windows/.test(ua) ? 'Windows'
-            : /Linux/.test(ua) ? 'Linux'
-              : null;
-  return device ? `${browser} on ${device}` : browser;
 }
 
 // `retry` labels the button that starts over; without it the button is hidden.
@@ -90,7 +72,7 @@ export function createPairing({ onApproved }) {
     $('pairing-code').textContent = '··· ···';
     showStatus('Asking Homey for a code…');
     try {
-      const { id, code, expiresAt } = await call('POST', '/pairing', { name: browserName(), purpose });
+      const { id, code, expiresAt } = await call('POST', '/pairing', { name: browserName(), purpose, screenId: screenId() });
       if (current !== attempt) return;
       $('pairing-code').textContent = `${code.slice(0, 3)} ${code.slice(3)}`;
       showStatus('Waiting for approval…');

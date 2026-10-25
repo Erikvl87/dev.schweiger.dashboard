@@ -55,6 +55,61 @@ const grants = (scopes, scope) => scope.split('.').some((_, index, parts) => sco
 const PAIRING_TTL = 10 * 60 * 1000;
 const MAX_WAITING = 10;
 
+// What the highlight card calls a widget without a title (and without a device or zone to name it by).
+const WIDGET_TYPES = {
+  app_webview: 'App widget',
+  dashboards_shortcuts: 'Dashboards',
+  devices_favorites: 'Favorite devices',
+  flows_favorites: 'Favorite flows',
+  moods_favorites: 'Favorite moods',
+  devices_custom: 'Devices',
+  flows_custom: 'Flows',
+  moods_custom: 'Moods',
+  devices_zone: 'Zone devices',
+  moods_zone: 'Zone moods',
+  light_zones: 'Zone lights',
+  insights_chart_line: 'Chart',
+  light_device: 'Light',
+  light_group: 'Lights',
+  device_speaker_large: 'Speaker',
+  device_speaker_small: 'Speaker',
+  energy_usage: 'Energy',
+  thermostat: 'Thermostat',
+  notifications_timeline_large: 'Timeline',
+  notifications_timeline_small: 'Timeline',
+  device_camera_snapshot: 'Camera snapshot',
+  device_camera_live: 'Live camera',
+  web_frame: 'Web frame',
+  energy_dynamic_prices: 'Electricity prices',
+  logic_variables: 'Variables',
+  note: 'Note',
+  sensors_selection: 'Sensors',
+  zone_controls: 'Zone controls',
+  users_avatars: 'Users',
+  batteries_devices: 'Batteries',
+  batteries_device_low: 'Low batteries',
+  weather_forecast: 'Weather forecast',
+  weather: 'Weather',
+};
+
+const matches = (query, ...texts) => texts.some((text) => text?.toLowerCase().includes(query.trim().toLowerCase()));
+
+// Screens: browsers showing the dashboard, each with a lasting random id it keeps in its storage and a name you give
+// it, so flow cards can aim at one of them. At most this many are kept; lastSeen is saved at most this often.
+const MAX_SCREENS = 50;
+const SEEN_EVERY = 60 * 60 * 1000;
+const ALL_SCREENS = 'all';
+const validScreenId = (id) => typeof id === 'string' && /^[\w-]{8,64}$/.test(id);
+const cleanName = (name) => (typeof name === 'string' && name.trim() !== '' ? name.trim().slice(0, 60) : null);
+
+function ago(timestamp) {
+  const minutes = Math.floor((Date.now() - timestamp) / 60000);
+  if (minutes < 2) return 'now';
+  if (minutes < 120) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 48 ? `${hours} h ago` : `${Math.floor(hours / 24)} days ago`;
+}
+
 // The dashboard is static files in assets/web/, which Homey serves at /app/<app id>/assets/web/.
 // The app works out that address for the settings page, keeps the API key the dashboard uses, and hands
 // it to browsers you approve (pairing), so the key only has to be entered once.
@@ -73,13 +128,16 @@ module.exports = class DashboardApp extends Homey.App {
     this.homey.settings.set('dashboardUrl', secureUrl);
     this.homey.settings.set('dashboardLocalUrl', localUrl);
     this.log(`Dashboard: ${secureUrl}`);
+
+    this.initHighlightCards();
+    this.initShowDashboardCard();
   }
 
   // ----- Pairing (public routes: an unknown browser can only ask for a code and poll it) -----
 
   // purpose 'pair' hands an approved browser the API key. 'unlock' only lets a kiosk tablet, which already has the
   // key, open its settings: approving it hands out nothing.
-  requestPairing({ name, purpose }) {
+  requestPairing({ name, purpose, screenId }) {
     const unlock = purpose === 'unlock';
     if (!unlock && !this.homey.settings.get('apiKey')) {
       throw new Error('No API key is set yet. Add one in the Web Dashboard settings in the Homey app.');
@@ -91,6 +149,8 @@ module.exports = class DashboardApp extends Homey.App {
       id: crypto.randomBytes(16).toString('hex'),
       code: String(crypto.randomInt(0, 1_000_000)).padStart(6, '0'),
       name: String(name || 'Browser').slice(0, 60),
+      // The browser's lasting id (see Screens), so approving can name it.
+      screenId: validScreenId(screenId) ? screenId : null,
       purpose: unlock ? 'unlock' : 'pair',
       createdAt: Date.now(),
       status: 'waiting',
@@ -122,14 +182,23 @@ module.exports = class DashboardApp extends Homey.App {
 
   // ----- Pairing (settings page) -----
 
+  // screenName: what the browser is already called, if it was paired or named before.
   listPairings() {
     this.prunePairings();
+    const screens = this.screens();
     return [...this.pairings.values()]
       .filter((pairing) => pairing.status === 'waiting')
-      .map(({ id, code, name, purpose, createdAt }) => ({ id, code, name, purpose, createdAt }));
+      .map(({ id, code, name, screenId, purpose, createdAt }) => ({
+        id, code, name, screenName: screens[screenId]?.name ?? null, purpose, createdAt,
+      }));
   }
 
-  approvePairing(id) {
+  // name: what to call the browser from now on (only when it connects, not for an unlock).
+  approvePairing(id, { name } = {}) {
+    const pairing = this.pairings.get(id);
+    if (pairing?.status === 'waiting' && pairing.purpose === 'pair' && pairing.screenId != null) {
+      this.saveScreen(pairing.screenId, { name: cleanName(name) ?? this.screens()[pairing.screenId]?.name ?? pairing.name });
+    }
     return this.decide(id, 'approved');
   }
 
@@ -177,9 +246,21 @@ module.exports = class DashboardApp extends Homey.App {
     };
   }
 
-  async keyScopes(token) {
+  // A request to this Homey's Web API with the given key (by default the saved one).
+  async callHomey(path, token = this.homey.settings.get('apiKey')) {
     const localUrl = await this.homey.api.getLocalUrl();
-    const response = await fetch(`${localUrl}/api/manager/sessions/session/me`, { headers: { Authorization: `Bearer ${token}` } });
+    return fetch(`${localUrl}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
+  async getFromHomey(path) {
+    if (!this.homey.settings.get('apiKey')) throw new Error('No API key is set yet. Add one in the Web Dashboard settings in the Homey app.');
+    const response = await this.callHomey(path);
+    if (!response.ok) throw new Error(`Homey refused ${path}: ${response.status}`);
+    return response.json();
+  }
+
+  async keyScopes(token) {
+    const response = await this.callHomey('/api/manager/sessions/session/me', token);
     if (!response.ok) return null;
     const session = await response.json();
     return session.intersectedScopes ?? session.scopes ?? null;
@@ -193,8 +274,7 @@ module.exports = class DashboardApp extends Homey.App {
       return { set: false };
     }
     const token = key.trim();
-    const localUrl = await this.homey.api.getLocalUrl();
-    const call = (path) => fetch(`${localUrl}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+    const call = (path) => this.callHomey(path, token);
 
     const me = await call('/api/manager/users/user/me');
     if (me.status === 401) throw new Error('Homey doesn\'t accept this API key.');
@@ -208,5 +288,258 @@ module.exports = class DashboardApp extends Homey.App {
     this.homey.settings.set('apiKeyStatus', status);
     this.log(`API key saved (user ${user.name})`);
     return this.getApiKeyStatus();
+  }
+
+  // Whether this Homey accepts a key a dashboard sent. The public routes act only for one it does.
+  async checkKey(token) {
+    const accepted = typeof token === 'string' && token !== ''
+      && (await this.callHomey('/api/manager/sessions/session/me', token).catch(() => null))?.ok;
+    if (!accepted) throw new Error('Homey doesn\'t accept this key.');
+  }
+
+  // ----- Screens (named browsers flow cards can aim at) -----
+
+  screens() {
+    return this.homey.settings.get('screens') ?? {};
+  }
+
+  // Adds or changes a screen. A new one beyond the limit pushes out the one seen longest ago.
+  saveScreen(id, changes) {
+    const screens = this.screens();
+    if (screens[id] == null) {
+      const oldest = Object.entries(screens).sort(([, a], [, b]) => a.lastSeen - b.lastSeen);
+      for (const [stale] of oldest.slice(0, Math.max(0, oldest.length - MAX_SCREENS + 1))) delete screens[stale];
+    }
+    const now = Date.now();
+    screens[id] = { name: 'Browser', createdAt: now, lastSeen: now, ...screens[id], ...changes };
+    this.homey.settings.set('screens', screens);
+    this.announceScreens();
+    return screens[id];
+  }
+
+  // Public route: a dashboard says hello on load and after reconnecting. One that isn't known yet (paired before
+  // screens existed, or set up with a typed key) is added under its browser name.
+  async screenHello({ token, id, name }) {
+    await this.checkKey(token);
+    if (!validScreenId(id)) throw new Error('Invalid screen id.');
+    let screen = this.screens()[id];
+    if (screen == null) screen = this.saveScreen(id, { name: cleanName(name) ?? 'Browser' });
+    else if (Date.now() - screen.lastSeen > SEEN_EVERY) screen = this.saveScreen(id, { lastSeen: Date.now() });
+    // A screen that comes along while every screen shows a highlight shows it too.
+    const everywhere = this.highlights.get(ALL_SCREENS);
+    if (everywhere != null && !this.highlights.has(id)) {
+      this.highlights.set(id, everywhere);
+      this.announceHighlights();
+    }
+    return { name: screen.name };
+  }
+
+  // Settings page.
+  listScreens() {
+    return Object.entries(this.screens())
+      .map(([id, screen]) => ({ id, ...screen }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  renameScreen(id, { name } = {}) {
+    if (this.screens()[id] == null) throw new Error('This screen is gone.');
+    const clean = cleanName(name);
+    if (clean == null) throw new Error('Give the screen a name.');
+    this.saveScreen(id, { name: clean });
+    return this.listScreens();
+  }
+
+  // The browser itself keeps its id; if it is still in use, it comes back under its browser name.
+  forgetScreen(id) {
+    const screens = this.screens();
+    delete screens[id];
+    this.homey.settings.set('screens', screens);
+    this.announceScreens();
+    if (this.highlights.delete(id)) this.announceHighlights();
+    return this.listScreens();
+  }
+
+  announceScreens() {
+    this.homey.api.realtime('screens', this.listScreens());
+  }
+
+  // The screen argument of the flow cards: every screen first, then the named ones.
+  screenChoices(query, everyone) {
+    return [
+      { id: ALL_SCREENS, name: everyone },
+      ...this.listScreens().map((screen) => ({ id: screen.id, name: screen.name, description: `Seen ${ago(screen.lastSeen)}` })),
+    ].filter((choice) => matches(query, choice.name));
+  }
+
+  // The screen a card was set up with, or an error if it was forgotten since.
+  screenArg(screen) {
+    if (screen?.id == null || screen.id === ALL_SCREENS) return ALL_SCREENS;
+    if (this.screens()[screen.id] == null) throw new Error(`${screen.name} is no longer a known screen. Pick the screen again.`);
+    return screen.id;
+  }
+
+  screenLabel(target) {
+    return target === ALL_SCREENS ? 'All screens' : this.screens()[target]?.name ?? 'A screen';
+  }
+
+  // ----- Show a dashboard (flow card) -----
+
+  // A one-off nudge, not kept: a browser that isn't connected right now just doesn't switch.
+  initShowDashboardCard() {
+    const card = this.homey.flow.getActionCard('show_dashboard');
+    card.registerArgumentAutocompleteListener('screen', (query) => this.screenChoices(query, 'All screens'));
+    card.registerArgumentAutocompleteListener('dashboard', (query) => this.dashboardChoices(query));
+    card.registerRunListener(async ({ screen, dashboard }) => {
+      const screenId = this.screenArg(screen);
+      const dashboards = await this.getFromHomey('/api/manager/dashboards/dashboard');
+      if (dashboards[dashboard.id] == null) throw new Error(`${dashboard.name} no longer exists. Pick the dashboard again.`);
+      this.log(`Show dashboard ${dashboards[dashboard.id].name} on ${this.screenLabel(screenId)}`);
+      // The dashboards listen for this on homey:app:<app id>.
+      this.homey.api.realtime('show-dashboard', { dashboardId: dashboard.id, screenId });
+    });
+  }
+
+  // ----- Widget highlight (flow cards; the screens show it) -----
+
+  // Each screen shows at most one highlight: screen id → { id, target, dashboardId, widgetId, name, dashboardName,
+  // size }. One for all screens is the same object on every screen, and also kept under 'all' for browsers without a
+  // lasting id. Closing a highlight closes it on every screen showing it. Kept in memory only; after a restart nothing
+  // is highlighted, and the dashboards close it when they reconnect.
+  initHighlightCards() {
+    this.highlights = new Map();
+    this.highlightTimers = new Map(); // highlight id → timer
+    this.highlightClosed = this.homey.flow.getTriggerCard('highlight_closed');
+
+    const highlightCard = this.homey.flow.getActionCard('highlight_widget');
+    highlightCard.registerRunListener((args) => this.openHighlight(args));
+    highlightCard.registerArgumentAutocompleteListener('screen', (query) => this.screenChoices(query, 'All screens'));
+    highlightCard.registerArgumentAutocompleteListener('dashboard', (query) => this.dashboardChoices(query));
+    // Homey hands over the card's other arguments, so the list holds the widgets of the dashboard picked first.
+    highlightCard.registerArgumentAutocompleteListener('widget', (query, args) => this.widgetChoices(query, args?.dashboard?.id));
+
+    const closeCard = this.homey.flow.getActionCard('close_highlight');
+    closeCard.registerArgumentAutocompleteListener('screen', (query) => this.screenChoices(query, 'All screens'));
+    closeCard.registerRunListener(({ screen }) => {
+      const target = this.screenArg(screen);
+      const ids = target === ALL_SCREENS ? [...this.highlights.values()].map((highlight) => highlight.id) : [this.highlights.get(target)?.id];
+      for (const id of new Set(ids)) this.closeHighlight(id, 'flow');
+    });
+
+    const openCard = this.homey.flow.getConditionCard('highlight_open');
+    openCard.registerArgumentAutocompleteListener('screen', (query) => this.screenChoices(query, 'Any screen'));
+    openCard.registerRunListener(({ screen }) => {
+      const target = this.screenArg(screen);
+      return target === ALL_SCREENS ? this.highlights.size > 0 : this.highlights.has(target);
+    });
+  }
+
+  async dashboardChoices(query) {
+    const dashboards = Object.values(await this.getFromHomey('/api/manager/dashboards/dashboard'));
+    return dashboards
+      .filter((dashboard) => matches(query, dashboard.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((dashboard) => ({ id: dashboard.id, name: dashboard.name }));
+  }
+
+  // Named by its title, else the device or zone it shows, else its kind. Without a dashboard picked, all of them.
+  async widgetChoices(query, dashboardId) {
+    const [dashboards, devices, zones] = await Promise.all([
+      this.getFromHomey('/api/manager/dashboards/dashboard'),
+      this.getFromHomey('/api/manager/devices/device').catch(() => ({})),
+      this.getFromHomey('/api/manager/zones/zone').catch(() => ({})),
+    ]);
+    const shown = dashboards[dashboardId] ? [dashboards[dashboardId]] : Object.values(dashboards);
+    return shown
+      .flatMap((dashboard) => (dashboard.columns ?? []).flatMap((column, index) => column.widgets.map((widget) => {
+        const kind = WIDGET_TYPES[widget.type] ?? widget.type;
+        const data = widget.data ?? {};
+        const subject = devices[data.deviceId ?? data.cameraId ?? data.lightId ?? data.speakerId]?.name ?? zones[data.zoneId]?.name;
+        const name = widget.title || subject || kind;
+        const where = shown.length > 1 ? `${dashboard.name}, column ${index + 1}` : `Column ${index + 1}`;
+        return {
+          id: widget.id,
+          dashboardId: dashboard.id,
+          name,
+          description: name === kind ? where : `${kind} · ${where}`,
+        };
+      })))
+      .filter((choice) => matches(query, choice.name, choice.description));
+  }
+
+  async openHighlight({ screen, dashboard, widget, size, seconds }) {
+    const target = this.screenArg(screen);
+    if (dashboard?.id != null && dashboard.id !== widget.dashboardId) {
+      throw new Error(`${widget.name} isn't on ${dashboard.name}. Pick the widget again.`);
+    }
+    const dashboards = await this.getFromHomey('/api/manager/dashboards/dashboard');
+    const board = dashboards[widget.dashboardId];
+    const found = (board?.columns ?? []).flatMap((column) => column.widgets).find((candidate) => candidate.id === widget.id);
+    if (found == null) throw new Error(`${widget.name} is no longer on its dashboard. Pick the widget again.`);
+
+    const highlight = {
+      id: crypto.randomBytes(8).toString('hex'),
+      target,
+      dashboardId: board.id,
+      widgetId: widget.id,
+      // The card keeps the name the widget had when it was picked; a title given since is the better one.
+      name: found.title || widget.name,
+      dashboardName: board.name,
+      size: size === 'fullscreen' ? 'fullscreen' : 'large',
+    };
+    // A new highlight replaces what those screens showed without counting as closing it.
+    const replaced = new Set([...this.highlights.values()].map((shown) => shown.id));
+    if (target === ALL_SCREENS) {
+      this.highlights.clear();
+      for (const id of [ALL_SCREENS, ...Object.keys(this.screens())]) this.highlights.set(id, highlight);
+    } else {
+      this.highlights.set(target, highlight);
+    }
+    // The timer of a highlight no screen shows any more has nothing left to close.
+    const still = new Set([...this.highlights.values()].map((shown) => shown.id));
+    for (const id of replaced) {
+      if (!still.has(id)) this.dropHighlightTimer(id);
+    }
+    if (seconds > 0) this.highlightTimers.set(highlight.id, this.homey.setTimeout(() => this.closeHighlight(highlight.id, 'timer'), seconds * 1000));
+    this.log(`Highlight ${widget.name} on ${board.name} (${highlight.size}) on ${this.screenLabel(target)}`);
+    this.announceHighlights();
+  }
+
+  dropHighlightTimer(id) {
+    this.homey.clearTimeout(this.highlightTimers.get(id));
+    this.highlightTimers.delete(id);
+  }
+
+  // Closes a highlight on every screen showing it. closedBy: 'flow', 'timer' or 'screen'.
+  closeHighlight(id, closedBy) {
+    const closing = [...this.highlights].filter(([, highlight]) => highlight.id === id);
+    if (closing.length === 0) return;
+    const [, closed] = closing[0];
+    for (const [screenId] of closing) this.highlights.delete(screenId);
+    this.dropHighlightTimer(id);
+    this.log(`Highlight of ${closed.name} closed (${closedBy})`);
+    this.announceHighlights();
+    this.highlightClosed.trigger({
+      widget: closed.name, dashboard: closed.dashboardName, screen: this.screenLabel(closed.target), closed_by: closedBy,
+    }).catch(this.error);
+  }
+
+  // Public route: a dashboard asks on load and after reconnecting. A browser without a known screen id gets the
+  // highlight for all screens.
+  getHighlight(screenId) {
+    const known = validScreenId(screenId) && this.screens()[screenId] != null;
+    return { highlight: this.highlights.get(known ? screenId : ALL_SCREENS) ?? null };
+  }
+
+  // Public route, because a dashboard's key can't reach the app's other routes. It acts only on the highlight that
+  // screen showed, not on one that replaced it meanwhile.
+  async closeHighlightFromScreen({ token, id }) {
+    await this.checkKey(token);
+    if (id != null) this.closeHighlight(id, 'screen');
+    return {};
+  }
+
+  // The dashboards listen for this on homey:app:<app id> and each picks its own.
+  announceHighlights() {
+    this.homey.api.realtime('highlight', { highlights: Object.fromEntries(this.highlights) });
   }
 };

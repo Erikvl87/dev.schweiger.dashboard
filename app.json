@@ -71,6 +71,245 @@
     "setApiKey": {
       "method": "PUT",
       "path": "/api-key"
+    },
+    "getHighlight": {
+      "method": "GET",
+      "path": "/highlight",
+      "public": true
+    },
+    "closeHighlight": {
+      "method": "POST",
+      "path": "/highlight/close",
+      "public": true
+    },
+    "listScreens": {
+      "method": "GET",
+      "path": "/screens"
+    },
+    "renameScreen": {
+      "method": "PUT",
+      "path": "/screens/:id"
+    },
+    "forgetScreen": {
+      "method": "DELETE",
+      "path": "/screens/:id"
+    },
+    "screenHello": {
+      "method": "POST",
+      "path": "/screen-hello",
+      "public": true
     }
+  },
+  "flow": {
+    "triggers": [
+      {
+        "title": {
+          "en": "The widget highlight was closed"
+        },
+        "hint": {
+          "en": "Not when a new highlight replaces it."
+        },
+        "tokens": [
+          {
+            "name": "widget",
+            "type": "string",
+            "title": {
+              "en": "Widget"
+            },
+            "example": "Front door"
+          },
+          {
+            "name": "dashboard",
+            "type": "string",
+            "title": {
+              "en": "Dashboard"
+            },
+            "example": "Hallway"
+          },
+          {
+            "name": "screen",
+            "type": "string",
+            "title": {
+              "en": "Screen"
+            },
+            "example": "Hallway tablet"
+          },
+          {
+            "name": "closed_by",
+            "type": "string",
+            "title": {
+              "en": "Closed by"
+            },
+            "example": "screen"
+          }
+        ],
+        "id": "highlight_closed"
+      }
+    ],
+    "conditions": [
+      {
+        "title": {
+          "en": "A widget highlight !{{is|isn't}} open"
+        },
+        "hint": {
+          "en": "Whether that screen (or any screen) shows a highlighted widget right now."
+        },
+        "titleFormatted": {
+          "en": "A widget highlight !{{is|isn't}} open on [[screen]]"
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "screen",
+            "title": {
+              "en": "Screen"
+            },
+            "placeholder": {
+              "en": "Any screen"
+            }
+          }
+        ],
+        "id": "highlight_open"
+      }
+    ],
+    "actions": [
+      {
+        "title": {
+          "en": "Close the widget highlight"
+        },
+        "hint": {
+          "en": "Closes the highlight that screen shows (or all of them), on every screen showing it."
+        },
+        "titleFormatted": {
+          "en": "Close the widget highlight on [[screen]]"
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "screen",
+            "title": {
+              "en": "Screen"
+            },
+            "placeholder": {
+              "en": "All screens"
+            }
+          }
+        ],
+        "id": "close_highlight"
+      },
+      {
+        "title": {
+          "en": "Highlight a widget"
+        },
+        "titleFormatted": {
+          "en": "On [[screen]], highlight [[dashboard]] › [[widget]] [[size]], closing after [[seconds]] seconds"
+        },
+        "hint": {
+          "en": "Shows the widget on that screen (or every open one), over whatever it is showing, until it is closed on a screen, by a flow or after the seconds given (leave empty to keep it open). It replaces what those screens highlighted."
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "screen",
+            "title": {
+              "en": "Screen"
+            },
+            "placeholder": {
+              "en": "All screens"
+            }
+          },
+          {
+            "type": "autocomplete",
+            "name": "dashboard",
+            "title": {
+              "en": "Dashboard"
+            },
+            "placeholder": {
+              "en": "Dashboard"
+            }
+          },
+          {
+            "type": "autocomplete",
+            "name": "widget",
+            "title": {
+              "en": "Widget"
+            },
+            "placeholder": {
+              "en": "Widget"
+            }
+          },
+          {
+            "type": "dropdown",
+            "name": "size",
+            "title": {
+              "en": "Size"
+            },
+            "values": [
+              {
+                "id": "large",
+                "title": {
+                  "en": "large"
+                }
+              },
+              {
+                "id": "fullscreen",
+                "title": {
+                  "en": "full screen"
+                }
+              }
+            ]
+          },
+          {
+            "type": "number",
+            "name": "seconds",
+            "required": false,
+            "min": 0,
+            "max": 86400,
+            "step": 1,
+            "title": {
+              "en": "Close after"
+            },
+            "placeholder": {
+              "en": "never"
+            }
+          }
+        ],
+        "id": "highlight_widget"
+      },
+      {
+        "title": {
+          "en": "Show a dashboard"
+        },
+        "titleFormatted": {
+          "en": "Show [[dashboard]] on [[screen]]"
+        },
+        "hint": {
+          "en": "Switches that screen (or every open one) to this dashboard. A kiosk tablet goes back to its own dashboard after two minutes without a touch."
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "screen",
+            "title": {
+              "en": "Screen"
+            },
+            "placeholder": {
+              "en": "All screens"
+            }
+          },
+          {
+            "type": "autocomplete",
+            "name": "dashboard",
+            "title": {
+              "en": "Dashboard"
+            },
+            "placeholder": {
+              "en": "Dashboard"
+            }
+          }
+        ],
+        "id": "show_dashboard"
+      }
+    ]
   }
 }

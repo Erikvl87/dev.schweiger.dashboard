@@ -70,6 +70,33 @@
     "setApiKey": {
       "method": "PUT",
       "path": "/api-key"
+    },
+    "getHighlight": {
+      "method": "GET",
+      "path": "/highlight",
+      "public": true
+    },
+    "closeHighlight": {
+      "method": "POST",
+      "path": "/highlight/close",
+      "public": true
+    },
+    "listScreens": {
+      "method": "GET",
+      "path": "/screens"
+    },
+    "renameScreen": {
+      "method": "PUT",
+      "path": "/screens/:id"
+    },
+    "forgetScreen": {
+      "method": "DELETE",
+      "path": "/screens/:id"
+    },
+    "screenHello": {
+      "method": "POST",
+      "path": "/screen-hello",
+      "public": true
     }
   }
 }

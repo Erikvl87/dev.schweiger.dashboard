@@ -4,6 +4,7 @@ import { STORAGE_KEY } from './state.js';
 
 // Served by the Homey app (/app/<app id>/assets/web/), Homey is this page's own origin.
 export const servedByHomey = /^\/app\/[^/]+\/assets\//.test(location.pathname);
+export const APP_ID = servedByHomey ? location.pathname.split('/')[2] : null;
 
 function readStoredConfig() {
   try {

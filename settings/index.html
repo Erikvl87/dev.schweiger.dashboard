@@ -12,11 +12,19 @@
       .command { margin: 8px 0; padding: 10px 12px; border-radius: 8px; background: rgba(128, 128, 128, 0.15); font-family: ui-monospace, Menlo, monospace; font-size: 0.75em; white-space: pre-wrap; word-break: break-all; -webkit-user-select: text; user-select: text; }
       .key-check { margin-top: 6px; }
       .key-check ul { margin: 4px 0 0; padding-left: 1.2em; }
-      .pairing { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.25); }
+      .pairing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.25); }
       .pairing:last-child { border-bottom: 0; }
-      .pairing-text { flex: 1; min-width: 0; }
+      .pairing-text { flex: 1 1 180px; min-width: 0; }
       .pairing-code { font-family: ui-monospace, Menlo, monospace; font-size: 1.4em; font-weight: 700; letter-spacing: 0.08em; }
       .pairing-buttons { display: flex; gap: 8px; }
+      .pairing-name { margin-top: 6px; }
+      /* On a phone the buttons wrap below the name; while renaming, the field takes the full width above them. */
+      .screen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.25); }
+      .screen:last-child { border-bottom: 0; }
+      .screen-text { flex: 1 1 180px; min-width: 0; }
+      .screen-name { font-weight: 600; overflow-wrap: anywhere; }
+      .screen.is-editing { flex-direction: column; align-items: stretch; }
+      .screen.is-editing .pairing-buttons { justify-content: flex-end; }
       .message-error { color: var(--homey-color-red, #d81c1d); }
       .message-ok { color: #1f7a00; font-weight: 600; }
       @media (prefers-color-scheme: dark) { .message-ok { color: #6ad43a; } }
@@ -45,6 +53,16 @@
       <p class="homey-text-small">
         A browser opening the dashboard for the first time shows a code; approve it here if the code matches and that
         browser gets the API key below. A kiosk tablet shows a code too when someone wants to change its settings.
+      </p>
+    </fieldset>
+
+    <fieldset class="homey-form-fieldset">
+      <legend class="homey-form-legend">Screens</legend>
+      <div id="screens"></div>
+      <p class="homey-text-small">
+        The browsers showing the dashboard. Flow cards can highlight a widget or show a dashboard on one of them by this
+        name. A browser keeps its name across reloads; a forgotten one that is still in use comes back under its browser
+        name the next time it loads.
       </p>
     </fieldset>
 
@@ -162,6 +180,9 @@
           return minutes < 1 ? 'just now' : minutes + ' min ago';
         }
 
+        // What was typed as a browser's name, so a list update (another browser asking) doesn't wipe it.
+        var typedNames = {};
+
         function renderPairings(pairings) {
           pairingsNode.textContent = '';
           if (!pairings || pairings.length === 0) {
@@ -181,11 +202,29 @@
             code.textContent = pairing.code.slice(0, 3) + ' ' + pairing.code.slice(3);
             var meta = document.createElement('div');
             meta.className = 'homey-text-small';
-            meta.textContent = pairing.name
+            meta.textContent = (pairing.screenName || pairing.name)
               + (pairing.purpose === 'unlock' ? ' · wants to change kiosk settings' : ' · wants to connect')
               + ' · ' + minutesAgo(pairing.createdAt);
             text.appendChild(code);
             text.appendChild(meta);
+            // A connecting browser is named here, e.g. "Hallway tablet", for flow cards to aim at.
+            var nameInput = null;
+            if (pairing.purpose === 'pair') {
+              nameInput = document.createElement('input');
+              nameInput.className = 'homey-form-input pairing-name';
+              nameInput.type = 'text';
+              nameInput.maxLength = 60;
+              nameInput.setAttribute('aria-label', 'Name this screen');
+              nameInput.placeholder = 'Name this screen';
+              nameInput.value = typedNames[pairing.id] != null ? typedNames[pairing.id] : (pairing.screenName || pairing.name);
+              nameInput.addEventListener('input', function () { typedNames[pairing.id] = nameInput.value; });
+              // The field starts filled in, so its placeholder never shows; say what it is for.
+              var nameLabel = document.createElement('div');
+              nameLabel.className = 'homey-text-small pairing-name';
+              nameLabel.textContent = 'Name this screen, then approve:';
+              text.appendChild(nameLabel);
+              text.appendChild(nameInput);
+            }
 
             var buttons = document.createElement('div');
             buttons.className = 'pairing-buttons';
@@ -196,7 +235,8 @@
               button.addEventListener('click', function () {
                 buttons.querySelectorAll('button').forEach(function (other) { other.disabled = true; });
                 button.classList.add('is-loading');
-                Homey.api('POST', '/pairings/' + pairing.id + '/' + action[0], {}, function (err) {
+                var body = action[0] === 'approve' && nameInput ? { name: nameInput.value } : {};
+                Homey.api('POST', '/pairings/' + pairing.id + '/' + action[0], body, function (err) {
                   if (err) Homey.alert(err.message || String(err));
                   loadPairings();
                 });
@@ -220,6 +260,137 @@
         // The app announces every change, so a code shows up here as soon as a browser asks.
         Homey.on('pairings', renderPairings);
         loadPairings();
+
+        // ----- Screens -----
+
+        var screensNode = document.getElementById('screens');
+        var renamed = null; // { id, from }: the last rename, to explain that flows keep the old name.
+
+        function seenAgo(timestamp) {
+          var minutes = Math.floor((Date.now() - timestamp) / 60000);
+          if (minutes < 60) return minutesAgo(timestamp);
+          var hours = Math.floor(minutes / 60);
+          return hours < 48 ? hours + ' h ago' : Math.floor(hours / 24) + ' days ago';
+        }
+
+        // The screen being renamed: the list isn't redrawn under it until it is saved or cancelled.
+        var editing = null;
+        var lastScreens = [];
+
+        function renderScreens(screens, force) {
+          if (screens) lastScreens = screens;
+          if (editing != null && !force) return;
+          screensNode.textContent = '';
+          if (lastScreens.length === 0) {
+            var empty = document.createElement('p');
+            empty.className = 'homey-text-small';
+            empty.textContent = 'No screens yet. A browser shows up here once it opens the dashboard.';
+            screensNode.appendChild(empty);
+            return;
+          }
+          lastScreens.forEach(function (screen) {
+            screensNode.appendChild(editing === screen.id ? renameRow(screen) : screenRow(screen));
+          });
+        }
+
+        function smallButton(label, primary, onClick) {
+          var button = document.createElement('button');
+          button.className = primary ? 'homey-button-primary-small' : 'homey-button-secondary-small';
+          button.textContent = label;
+          button.addEventListener('click', onClick);
+          return button;
+        }
+
+        function screenRow(screen) {
+          var row = document.createElement('div');
+          row.className = 'screen';
+          var text = document.createElement('div');
+          text.className = 'screen-text';
+          var name = document.createElement('div');
+          name.className = 'screen-name';
+          name.textContent = screen.name;
+          var meta = document.createElement('div');
+          meta.className = 'homey-text-small';
+          meta.textContent = 'Seen ' + seenAgo(screen.lastSeen);
+          // Flows store the name they were set up with: Homey shows it until the screen is picked again, but the card
+          // finds the screen by its id, so it keeps working.
+          if (renamed && renamed.id === screen.id) {
+            meta.textContent += ' · Renamed. Flows still show "' + renamed.from
+              + '" until you pick the screen again in them; they keep working.';
+          }
+          text.appendChild(name);
+          text.appendChild(meta);
+
+          var buttons = document.createElement('div');
+          buttons.className = 'pairing-buttons';
+          buttons.appendChild(smallButton('Rename', false, function () {
+            editing = screen.id;
+            renderScreens(null, true);
+          }));
+          buttons.appendChild(smallButton('Forget', false, function () {
+            Homey.confirm('Forget ' + screen.name + '? Flow cards aimed at it stop working.', 'warning', function (err, yes) {
+              if (err || !yes) return;
+              Homey.api('DELETE', '/screens/' + screen.id, null, function (deleteErr, list) {
+                if (deleteErr) return Homey.alert(deleteErr.message || String(deleteErr));
+                renderScreens(list);
+              });
+            });
+          }));
+          row.appendChild(text);
+          row.appendChild(buttons);
+          return row;
+        }
+
+        function renameRow(screen) {
+          var row = document.createElement('div');
+          row.className = 'screen is-editing';
+          var input = document.createElement('input');
+          input.className = 'homey-form-input';
+          input.type = 'text';
+          input.maxLength = 60;
+          input.value = screen.name;
+          input.setAttribute('aria-label', 'New name for ' + screen.name);
+
+          function stop() {
+            editing = null;
+            renderScreens(null, true);
+          }
+          var save = smallButton('Save', true, function () {
+            if (input.value.trim() === screen.name) return stop();
+            save.disabled = true;
+            save.classList.add('is-loading');
+            Homey.api('PUT', '/screens/' + screen.id, { name: input.value }, function (err, list) {
+              save.disabled = false;
+              save.classList.remove('is-loading');
+              if (err) return Homey.alert(err.message || String(err));
+              renamed = { id: screen.id, from: screen.name };
+              editing = null;
+              renderScreens(list, true);
+            });
+          });
+          input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') save.click();
+            if (event.key === 'Escape') stop();
+          });
+
+          var buttons = document.createElement('div');
+          buttons.className = 'pairing-buttons';
+          buttons.appendChild(save);
+          buttons.appendChild(smallButton('Cancel', false, stop));
+          row.appendChild(input);
+          row.appendChild(buttons);
+          setTimeout(function () {
+            input.focus();
+            input.select();
+          });
+          return row;
+        }
+
+        Homey.on('screens', renderScreens);
+        Homey.api('GET', '/screens', null, function (err, screens) {
+          if (err) return Homey.alert(err.message || String(err));
+          renderScreens(screens);
+        });
 
         // ----- API key -----
 
