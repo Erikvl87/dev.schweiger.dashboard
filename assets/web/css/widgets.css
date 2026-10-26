@@ -17,7 +17,7 @@
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 /* ----- Favorite devices ----- */
-.device-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.device-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .device-tile {
   position: relative;
   display: flex;
