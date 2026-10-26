@@ -127,4 +127,6 @@ export async function renameOwnScreen(name) {
     token: state.client.token, id: screenId(), name,
   });
   state.screenName = result.name;
+  // Settings shows the new name right away; the `screens` event brings the same list a moment later.
+  state.screens = state.screens.map((screen) => (screen.id === screenId() ? { ...screen, name: result.name } : screen));
 }

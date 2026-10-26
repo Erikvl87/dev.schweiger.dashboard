@@ -23,10 +23,11 @@ async function call(method, path, body) {
   return data;
 }
 
-// `retry` labels the button that starts over; without it the button is hidden.
-function showStatus(text, { isError = false, retry = null } = {}) {
+// `retry` labels the button that starts over; without it the button is hidden. `waiting` shows a spinner.
+function showStatus(text, { isError = false, retry = null, waiting = false } = {}) {
   $('pairing-status').textContent = text;
   $('pairing-status').classList.toggle('is-error', isError);
+  $('pairing-status').classList.toggle('is-waiting', waiting);
   $('pairing-retry').hidden = retry == null;
   $('pairing-retry').textContent = retry ?? '';
 }
@@ -88,14 +89,14 @@ export function createPairing({ onApproved }) {
     const current = attempt;
     $('pairing-code').textContent = '··· ···';
     showScreens();
-    showStatus('Asking Homey for a code…');
+    showStatus('Asking Homey for a code…', { waiting: true });
     try {
       const { id, code, expiresAt, screens } = await call('POST', '/pairing', { name: browserName(), purpose, screenId: screenId() });
       if (current !== attempt) return;
       pairingId = id;
       $('pairing-code').textContent = `${code.slice(0, 3)} ${code.slice(3)}`;
       showScreens(screens);
-      showStatus('Waiting for approval…');
+      showStatus('Waiting for approval…', { waiting: true });
       poll(id, expiresAt, current);
     } catch (error) {
       if (current !== attempt) return;
@@ -109,7 +110,7 @@ export function createPairing({ onApproved }) {
     const { value } = event.target;
     try {
       await call('PUT', `/pairing/${pairingId}`, { screen: value === '' ? null : Number(value) });
-      showStatus('Waiting for approval…');
+      showStatus('Waiting for approval…', { waiting: true });
     } catch (error) {
       showStatus(error.message, { isError: true });
     }

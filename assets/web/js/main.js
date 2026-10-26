@@ -152,6 +152,10 @@ function showSetupMode(mode) {
   const asking = mode === 'pairing' || mode === 'unlock';
   $('setup-pairing').hidden = !asking;
   $('setup-key').hidden = asking;
+  $('pairing-foot').hidden = !asking;
+  $('key-foot').hidden = asking;
+  // Waiting for a code has its own way out (Cancel, or a key instead).
+  if (asking) $('setup-close').hidden = true;
   $('pairing-intro').hidden = mode !== 'pairing';
   $('unlock-intro').hidden = mode !== 'unlock';
   // Unlocking must not offer a way around the approval.
@@ -193,16 +197,23 @@ function openSetup(errorText) {
   const paired = connected && servedByHomey;
   $('setup-token-group').hidden = paired;
   $('setup-token').required = !paired;
+  $('setup-credentials').hidden = paired;
   $('setup-connect').hidden = paired;
-  $('setup-forget-note').hidden = !connected;
+  $('setup-close').hidden = !connected;
+  // Connected, Disconnect lives in the Connection section; before that, the footer offers to forget a stored key.
+  $('setup-connection').hidden = !connected;
+  $('connection-status').textContent = state.me?.name ? `Connected as ${state.me.name}` : 'Connected';
+  $('setup-forget-note').hidden = !paired;
+  $('setup-forget-key').hidden = connected || !config.token;
   $('setup-screen').hidden = !paired || screenId() == null;
   $('setup-no-screen').hidden = !paired || screenId() != null;
-  if (paired && screenId() != null) showScreenPicker();
+  if (paired && screenId() != null) showScreenSection();
   $('setup-kiosk').hidden = !connected;
   $('setup-done').hidden = !connected;
   $('fit-toggle').checked = isFit();
   $('kiosk-toggle').checked = isKiosk();
   $('kiosk-screen').hidden = !isKiosk();
+  $('kiosk-screen').classList.toggle('is-on', screenState() === 'on');
   $('kiosk-screen').textContent = {
     on: 'The screen is being kept on.',
     off: "The browser isn't keeping the screen on right now (it may need a tap first, or power saving refuses it).",
@@ -230,48 +241,32 @@ function openSetup(errorText) {
   if (!$('setup').open) $('setup').showModal();
 }
 
-// "This screen" in Settings: this browser's own screen to rename it, another screen the app knows to become that one,
-// or a new screen. keep: hold on to what is picked and typed (the list changed while Settings was open).
+// "This screen" in Settings: a picker with every screen the app knows (this one selected) and "New screen…", and
+// Rename beside it. Picking another screen, a new one or Rename confirms in a small dialog on top (#screen-dialog);
+// cancelling it puts the picker back on this screen. Only a connected browser gets here, and the app checks its key.
 const NEW_SCREEN = '';
-function showScreenPicker({ keep = false } = {}) {
-  const ownKnown = state.screens.some((screen) => screen.id === screenId());
-  const picked = keep ? $('screen-pick').value : (ownKnown ? screenId() : NEW_SCREEN);
-  const typed = keep ? $('screen-rename-name').value : (ownKnown ? state.screenName ?? '' : '');
+const ownScreen = () => state.screens.find((screen) => screen.id === screenId()) ?? null;
+
+function showScreenSection() {
+  const own = ownScreen();
   const options = state.screens.map((screen) => {
-    const where = screen.id === screenId() ? 'this browser' : `seen ${seenAgo(screen.lastSeen)}`;
-    const option = el('option', null, `${screen.name} · ${screen.shortId} · ${where}`);
+    const where = screen.id === screenId() ? '' : ` · seen ${seenAgo(screen.lastSeen)}`;
+    const option = el('option', null, `${screen.name} · ${screen.shortId}${where}`);
     option.value = screen.id;
     return option;
   });
-  const fresh = el('option', null, 'A new screen');
+  // Forgotten in the Homey app while open: it is no screen until it picks one (or the next load adds it back).
+  if (own == null) {
+    const none = el('option', null, 'Not a known screen');
+    none.value = screenId();
+    none.disabled = true;
+    options.unshift(none);
+  }
+  const fresh = el('option', null, 'New screen…');
   fresh.value = NEW_SCREEN;
   $('screen-pick').replaceChildren(...options, fresh);
-  $('screen-pick').value = picked;
-  // A screen forgotten in the meantime falls back to a new one.
-  if ($('screen-pick').value !== picked) $('screen-pick').value = NEW_SCREEN;
-  $('screen-rename-name').value = typed;
-  updateScreenPicker();
-}
-
-// The name field and the button follow what is picked.
-function updateScreenPicker() {
-  const picked = $('screen-pick').value;
-  const own = picked === screenId();
-  const other = own ? null : state.screens.find((screen) => screen.id === picked);
-  const nameInput = $('screen-rename-name');
-  nameInput.hidden = other != null;
-  nameInput.placeholder = own ? '' : browserName();
-  const apply = $('screen-apply');
-  apply.textContent = own ? 'Rename' : other ? 'Become this screen' : 'Add as new screen';
-  apply.classList.toggle('primary', !own);
-  apply.disabled = own && nameInput.value.trim() === (state.screenName ?? '');
-  // The screen this browser leaves keeps its flow cards; another browser may still show it.
-  const leaves = state.screenName && !own
-    ? ` ${state.screenName} stays in the Homey app; forget it there if no browser shows it any more.` : '';
-  $('screen-note').textContent = own
-    ? 'Flow cards can highlight a widget or show a dashboard on this screen by its name.'
-    : other ? `Flow cards aimed at ${other.name} show here from now on.${leaves}`
-      : `This browser becomes a screen of its own for flow cards to aim at.${leaves}`;
+  $('screen-pick').value = screenId();
+  $('screen-rename').hidden = own == null;
 }
 
 function seenAgo(timestamp) {
@@ -282,42 +277,72 @@ function seenAgo(timestamp) {
   return hours < 48 ? `${hours} h ago` : `${Math.floor(hours / 24)} days ago`;
 }
 
+// mode 'rename', 'switch' (to target, a known screen) or 'new'.
+let screenAction = null;
+function openScreenDialog(mode, target) {
+  const own = ownScreen();
+  screenAction = { mode, target };
+  // The screen this browser leaves keeps its flow cards; another browser may still show it.
+  const leaves = own ? ` ${own.name} stays in the Homey app; forget it there if no browser shows it any more.` : '';
+  const texts = {
+    rename: ['Rename this screen', 'Flow cards find the screen by its id, so they keep working.', 'Save'],
+    switch: [`Switch to ${target?.name}?`, `Flow cards aimed at ${target?.name} show here from now on.${leaves}`, 'Switch'],
+    new: ['New screen', `This browser becomes a screen of its own for flow cards to aim at.${leaves}`, 'Add screen'],
+  }[mode];
+  $('screen-dialog-title').textContent = texts[0];
+  $('screen-dialog-text').textContent = texts[1];
+  $('screen-dialog-apply').textContent = texts[2];
+  $('screen-dialog-apply').disabled = false;
+  $('screen-dialog-error').hidden = true;
+  const name = $('screen-dialog-name');
+  name.hidden = mode === 'switch';
+  name.value = mode === 'rename' ? own?.name ?? '' : '';
+  name.placeholder = mode === 'new' ? browserName() : '';
+  $('screen-dialog').showModal();
+  if (!name.hidden) name.select();
+}
+
 $('screen-pick').addEventListener('change', () => {
-  $('screen-rename-name').value = $('screen-pick').value === screenId() ? state.screenName ?? '' : '';
-  updateScreenPicker();
-});
-$('screen-rename-name').addEventListener('input', updateScreenPicker);
-// Enter applies here rather than submitting the setup form.
-$('screen-rename-name').addEventListener('keydown', (event) => {
-  if (event.key !== 'Enter') return;
-  event.preventDefault();
-  if (!$('screen-apply').disabled) $('screen-apply').click();
-});
-$('screen-apply').addEventListener('click', async () => {
   const picked = $('screen-pick').value;
-  const name = $('screen-rename-name').value.trim();
-  $('screen-apply').disabled = true;
-  $('setup-error').hidden = true;
+  if (picked === screenId()) return;
+  if (picked === NEW_SCREEN) openScreenDialog('new');
+  else openScreenDialog('switch', state.screens.find((screen) => screen.id === picked));
+});
+$('screen-rename').addEventListener('click', () => openScreenDialog('rename'));
+$('screen-dialog-cancel').addEventListener('click', () => $('screen-dialog').close());
+// However it closes (Cancel, Esc, done), the picker shows this screen again.
+$('screen-dialog').addEventListener('close', () => {
+  screenAction = null;
+  showScreenSection();
+});
+$('screen-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (screenAction == null) return;
+  const { mode, target } = screenAction;
+  const name = $('screen-dialog-name').value.trim();
+  $('screen-dialog-apply').disabled = true;
+  $('screen-dialog-error').hidden = true;
   try {
-    if (picked === screenId()) {
+    if (mode === 'rename') {
       await renameOwnScreen(name);
-      showScreenPicker();
+      $('screen-dialog').close();
     } else {
       // Loads the page again as that screen.
-      await switchScreen(picked === NEW_SCREEN ? null : picked, name);
+      await switchScreen(mode === 'switch' ? target.id : null, name);
     }
   } catch (error) {
-    $('setup-error').textContent = error.message;
-    $('setup-error').hidden = false;
-    updateScreenPicker();
+    $('screen-dialog-error').textContent = error.message;
+    $('screen-dialog-error').hidden = false;
+    $('screen-dialog-apply').disabled = false;
   }
 });
 document.addEventListener('screens-changed', () => {
-  if ($('setup').open && !$('setup-screen').hidden) showScreenPicker({ keep: true });
+  if ($('setup').open && !$('setup-screen').hidden && !$('screen-dialog').open) showScreenSection();
 });
 
 $('setup').addEventListener('close', () => pairing.stop());
 $('setup-done').addEventListener('click', () => $('setup').close());
+$('setup-close').addEventListener('click', () => $('setup').close());
 $('fit-toggle').addEventListener('change', (event) => setFit(event.target.checked));
 // Kiosk mode: this browser always shows the chosen dashboard. Turning it on shows the result straight away;
 // holding the dashboard name brings Settings back.
@@ -346,7 +371,9 @@ $('setup-form').addEventListener('submit', () => {
   location.reload();
 });
 
-$('setup-forget').addEventListener('click', () => {
+// Disconnect (connected) and Forget key (a stored key that doesn't connect): drop the key and the remembered dashboard.
+// The screen id stays, so pairing again comes back as the same screen.
+function forgetKey() {
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(`${STORAGE_KEY}:dashboard`);
@@ -354,7 +381,9 @@ $('setup-forget').addEventListener('click', () => {
     // Ignore unavailable storage.
   }
   location.reload();
-});
+}
+$('setup-forget').addEventListener('click', forgetKey);
+$('setup-forget-key').addEventListener('click', forgetKey);
 
 $('settings-button').addEventListener('click', () => openSetup());
 
