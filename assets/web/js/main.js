@@ -4,6 +4,7 @@ import { APP_ID, keepStorage, loadConfig, servedByHomey, writeStoredConfig } fro
 import { isSaving, loadKeyScopes } from './dashboard-save.js';
 import { initEditMode } from './edit-mode.js';
 import { initFit, isFit, setFit } from './fit.js';
+import { getTheme, initTheme, setTheme } from './theme.js';
 import { $, darkQuery, el } from './dom.js';
 import { DASHBOARD_ICON } from './icons.js';
 import { createClient } from './homey-api.js';
@@ -210,6 +211,7 @@ function openSetup(errorText) {
   if (paired && screenId() != null) showScreenSection();
   $('setup-kiosk').hidden = !connected;
   $('setup-done').hidden = !connected;
+  $('setup-form').elements.theme.value = getTheme();
   $('fit-toggle').checked = isFit();
   $('kiosk-toggle').checked = isKiosk();
   $('kiosk-screen').hidden = !isKiosk();
@@ -343,6 +345,11 @@ document.addEventListener('screens-changed', () => {
 $('setup').addEventListener('close', () => pairing.stop());
 $('setup-done').addEventListener('click', () => $('setup').close());
 $('setup-close').addEventListener('click', () => $('setup').close());
+// Widgets are told light or dark when their iframe starts, so the dashboard is drawn again.
+$('theme-picker').addEventListener('change', (event) => {
+  setTheme(event.target.value);
+  renderDashboard();
+});
 $('fit-toggle').addEventListener('change', (event) => setFit(event.target.checked));
 // Kiosk mode: this browser always shows the chosen dashboard. Turning it on shows the result straight away;
 // holding the dashboard name brings Settings back.
@@ -419,7 +426,9 @@ document.addEventListener('keydown', (event) => {
 });
 document.addEventListener('show-dashboard', (event) => showDashboard(event.detail));
 
-darkQuery.addEventListener('change', () => renderDashboard());
+darkQuery.addEventListener('change', () => {
+  if (getTheme() === 'auto') renderDashboard();
+});
 
 // A paired browser holds the app's key; once that key is deleted in my.homey.app, it pairs again.
 function isRevokedKey(error) {
@@ -541,6 +550,7 @@ async function boot() {
 }
 
 initKiosk({ onHold: openUnlock, onIdle: kioskIdle });
+initTheme();
 initFit();
 initEditMode();
 boot();

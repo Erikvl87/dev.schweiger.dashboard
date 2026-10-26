@@ -19,6 +19,8 @@ Pick the dashboard by tapping its name at the top (as in the app), with a dashbo
 
 **Fit to screen width**: by default the columns keep their width and scroll sideways. Turn on *Fit to screen width* in the dashboard's **Settings** and that browser shrinks the whole dashboard until every column fits instead (it never enlarges it). `?fit` does the same for one address without storing it.
 
+**Appearance**: by default the dashboard follows the device's light or dark mode. *Appearance* in the dashboard's **Settings** (Auto, Light or Dark) fixes it for that browser; app widgets are told the same. `?theme=light` or `?theme=dark` does the same for one address without storing it, handy for a kiosk browser that wipes its storage.
+
 **Screens**: every browser showing the dashboard is a screen with a name, so flow cards can aim at one ("Hallway tablet"). You name a browser when you approve it (the field starts as e.g. *Safari on iPad*). The app's settings in the Homey app list all screens to rename or forget them; that list is kept on the Homey, so it survives app restarts, Homey reboots and updates. In the dashboard's **Settings**, *This screen* is a picker with every screen and its short id: **Rename** beside it renames this one, and picking another screen (or *New screen…*) makes the browser that screen after a confirmation; the screen it leaves stays listed, with its flow cards, until you forget it in the Homey app. A browser keeps a random id in its storage, so its screen survives reloads and **Disconnect**: Disconnect only removes the key from that browser, and pairing again brings it back as the same screen. **Forget** in the Homey app removes a screen for good and breaks the flow cards aimed at it; a browser still showing it disconnects (straight away if it is open, otherwise when it next loads) and has to be approved again, as a new screen. A browser whose data was cleared (or a kiosk browser that wipes it on restart) pairs again and picks the screen it was, so flow cards aimed at that screen keep working; it can't take a screen over without that approval. Names are unique (a browser name already in use gets *2*, *3*, …), and a short id such as *#3F9A* is shown next to each screen in the settings, the flow cards and the dashboard's **Settings**. Browsers paired before screens existed, or set up with a typed key, show up under their browser name. A private window can't keep an id, so it only follows cards aimed at all screens.
 
 **Flow cards**: put one widget or dashboard in front of everyone, or of one screen, e.g. the front-door camera on the hallway tablet when the doorbell rings. Each card's first choice is the screen: *All screens* or a named one.
@@ -86,6 +88,7 @@ assets/web/
   js/screen.js          this browser's lasting screen id and the name the app gives it
   js/kiosk.js           kiosk mode: fixed dashboard, screen on, idle reset, hold the name for Settings
   js/fit.js             fit to screen width: zooms the board out so all columns fit
+  js/theme.js           appearance: auto, light or dark (Settings, ?theme=)
   js/highlight.js       shows the widget a flow highlighted, large or full screen
   js/mood-orb.js        mood icons: a gradient of the colours a mood sets (the Homey web app's method)
   manifest.json, img/   Add to Home Screen

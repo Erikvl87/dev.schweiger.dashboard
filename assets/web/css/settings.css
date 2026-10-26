@@ -129,6 +129,22 @@ label.settings-row { cursor: pointer; }
 .settings-switch:checked { background: radial-gradient(circle at 31px 50%, #ffffff 9.5px, transparent 10px) var(--accent); }
 :dir(rtl) .settings-switch { background-position: 0 0; scale: -1 1; }
 
+/* One of a few (Appearance): radios shown as a segmented control. */
+.settings-segmented { flex: none; display: flex; padding: 2px; border-radius: 9px; background: var(--control); }
+.settings-segmented label { position: relative; cursor: pointer; }
+.settings-segmented input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.settings-segmented span {
+  display: block;
+  padding: 5px 12px;
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color var(--motion-fast) var(--curve-fast-in-out);
+}
+.settings-segmented input:checked + span { background: var(--panel); color: var(--text-primary); box-shadow: 0 1px 3px rgb(0 0 0 / 0.18); }
+.settings-segmented input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 .settings :is(button, select, input, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Opening focuses the body (autofocus), not its first button. */
 .settings-body:focus { outline: none; }
@@ -183,7 +199,7 @@ label.settings-row { cursor: pointer; }
 @keyframes settings-spin { to { rotate: 360deg; } }
 @media (prefers-reduced-motion: reduce) {
   .pairing-status.is-waiting::before { animation: none; }
-  .settings-switch { transition: none; }
+  .settings-switch, .settings-segmented span { transition: none; }
 }
 
 /* ----- A small dialog on top of Settings (rename, switch screen) ----- */

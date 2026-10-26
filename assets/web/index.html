@@ -13,6 +13,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Dashboard">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>
+  // The theme picked in Settings or with ?theme= (js/theme.js), set before the first paint so it doesn't flash.
+  try {
+    const theme = new URLSearchParams(location.search).get('theme') ?? localStorage.getItem('homey-web-dashboard:theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+  } catch {}
+</script>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/settings.css">
@@ -114,12 +121,21 @@
         <section id="setup-layout" class="settings-group" hidden>
           <h3 class="settings-group-title">Display</h3>
           <div class="settings-card">
+            <div class="settings-row">
+              <span id="theme-label">Appearance</span>
+              <div id="theme-picker" class="settings-segmented" role="radiogroup" aria-labelledby="theme-label">
+                <label><input type="radio" name="theme" value="auto"><span>Auto</span></label>
+                <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+                <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+              </div>
+            </div>
             <label class="settings-row" for="fit-toggle">
               <span>Fit to screen width</span>
               <input id="fit-toggle" class="settings-switch" type="checkbox" role="switch">
             </label>
           </div>
-          <p class="settings-hint">Shrinks the columns to fit instead of scrolling sideways.</p>
+          <p class="settings-hint">Auto follows the device's light or dark mode. Fit to screen width shrinks the columns
+            to fit instead of scrolling sideways.</p>
         </section>
 
         <section id="setup-kiosk" class="settings-group" hidden>
