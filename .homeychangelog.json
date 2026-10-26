@@ -10,5 +10,8 @@
   },
   "1.2.0": {
     "en": "New: Flow cards to show a dashboard or highlight a widget large or full screen (the door camera when the bell rings, for example) on all screens or one named screen, check and close the highlight, and react when it closes. Screens are named in the app settings. Live cameras: widgets showing the same camera share one stream, so a second one shows video at once."
+  },
+  "1.3.0": {
+    "en": "New: edit dashboards from the browser. Edit moves, edits and removes widgets, and a widget's settings work like in the Homey app: its title, devices and its app's own settings. App widgets that need storage can get it while staying sealed off from the API key, or be trusted to run as in the Homey app. Editing needs a key with the Dashboards permission (homey.dashboard). Fixed: app widgets sized as a share of their width are no longer cut off, and popups from app widgets can no longer reach the dashboard's stored key."
   }
 }
