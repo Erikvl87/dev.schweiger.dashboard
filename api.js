@@ -57,4 +57,12 @@ module.exports = {
   async closeHighlight({ homey, body }) {
     return homey.app.closeHighlightFromScreen(body ?? {});
   },
+
+  async getWidgetModes({ homey }) {
+    return homey.app.widgetModes();
+  },
+
+  async setWidgetMode({ homey, params, body }) {
+    return homey.app.setWidgetMode(params.id, body ?? {});
+  },
 };

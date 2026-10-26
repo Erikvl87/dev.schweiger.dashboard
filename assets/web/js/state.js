@@ -1,4 +1,4 @@
-// Shared runtime state: config, Homey client, loaded data and per-render cleanups.
+// Shared runtime state: config, Homey client and loaded data.
 
 export const STORAGE_KEY = 'homey-web-dashboard';
 
@@ -15,7 +15,6 @@ export const state = {
   data: {},
   dataErrors: {},
   locales: new Map(),
-  cleanups: [],
   screenName: null, // What the app calls this browser (screen.js).
   highlighted: null, // The widget a flow highlighted (highlight.js), shown over the dashboard.
 };

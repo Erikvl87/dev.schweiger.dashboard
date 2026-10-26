@@ -4,6 +4,8 @@ import { applyWidgetHeight, widgetHosts } from '../crossframe-host.js';
 import { requireData } from '../data.js';
 import { el, note } from '../dom.js';
 import { state } from '../state.js';
+import { widgetMode } from '../widget-modes.js';
+import { loadWithStorage } from '../widget-storage.js';
 
 // No allow-popups-to-escape-sandbox: a popup that escaped would run unsandboxed, and one opened on a Homey address
 // could run an app's code on this page's origin, where the API key is.
@@ -28,11 +30,11 @@ export function mountAppWidget({ widget, section, body, setTitle }) {
   iframe.title = definition.name;
   applyWidgetHeight(iframe, definition.height ?? 200);
   // Served by the Homey app, this page shares Homey's origin with every app's widgets. Without
-  // allow-same-origin the widget runs in its own opaque origin, so it can't read the API key this page stores.
-  // Set before src, so the first load is already sandboxed.
-  iframe.setAttribute('sandbox', SANDBOX);
+  // allow-same-origin the widget runs in its own opaque origin, so it can't read the API key this page stores,
+  // unless it is trusted (widget-modes.js). Set before the frame loads, so the first load is already sandboxed.
+  const mode = widgetMode(widget.id);
+  if (mode !== 'trusted') iframe.setAttribute('sandbox', SANDBOX);
   const src = `${state.client.base}/app/${encodeURIComponent(appId)}/widgets/${encodeURIComponent(definition.ownerId)}/index.html?widgetInstanceId=${encodeURIComponent(widget.id)}`;
-  iframe.src = src;
   frame.append(iframe);
   body.append(frame);
 
@@ -42,6 +44,7 @@ export function mountAppWidget({ widget, section, body, setTitle }) {
     appId,
     widgetId: definition.ownerId,
     instanceId: widget.id,
+    storage: mode === 'storage',
     settings: { ...defaults, ...(widget.data.settings ?? {}) },
     deviceIds: widget.data.deviceIds ?? [],
     transparent: definition.transparent === true,
@@ -57,6 +60,14 @@ export function mountAppWidget({ widget, section, body, setTitle }) {
   // Register before the frame loads: the widget asks for its initial data immediately.
   const frameWindow = iframe.contentWindow;
   widgetHosts.set(frameWindow, host);
+  if (host.storage) {
+    loadWithStorage(iframe, src, appId).catch((error) => {
+      console.info(`Widget storage: ${error.message}`);
+      iframe.src = src;
+    });
+  } else {
+    iframe.src = src;
+  }
 
   return () => {
     clearTimeout(revealTimer);

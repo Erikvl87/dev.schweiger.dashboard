@@ -1,6 +1,8 @@
 // Entry point: connects to Homey, picks the dashboard and keeps it live.
 
 import { APP_ID, loadConfig, servedByHomey, writeStoredConfig } from './config.js';
+import { isSaving, loadKeyScopes } from './dashboard-save.js';
+import { initEditMode } from './edit-mode.js';
 import { initFit, isFit, setFit } from './fit.js';
 import { $, darkQuery, el } from './dom.js';
 import { DASHBOARD_ICON } from './icons.js';
@@ -9,10 +11,11 @@ import { fetchHighlight, isHighlightOpen, showHighlight, watchHighlight } from '
 import { initKiosk, isKiosk, kioskHome, resetIdle, screenState, setKiosk, settleKioskHome } from './kiosk.js';
 import { createPairing } from './pairing.js';
 import { createRealtime, loadScript } from './realtime.js';
-import { renderDashboard } from './render.js';
+import { redrawWidgets, renderDashboard, updateBoard } from './render.js';
 import { registerScreen, screenId, watchScreen } from './screen.js';
 import { STORAGE_KEY, params, state } from './state.js';
 import { checkForUpdate, watchUpdates } from './updates.js';
+import { loadWidgetModes, watchWidgetModes } from './widget-modes.js';
 
 // The dashboard name is the switch: it lists the dashboards, the shown one highlighted. Not in kiosk mode.
 function populateDashboardMenu() {
@@ -77,21 +80,28 @@ function setStatus(stateName, text) {
   status.textContent = text;
 }
 
+// Re-render when the shown dashboard changes, or one it has a shortcut to (its name may have changed).
+const isShownOrLinked = (id) => id === state.dashboardId
+  || (state.dashboards[state.dashboardId]?.columns ?? []).some((column) => column.widgets
+    .some((widget) => widget.type === 'dashboards_shortcuts' && widget.data?.dashboardIds?.includes(id)));
+
+// From Homey, or saved here (edit mode), which Homey then announces too. Only what changed is drawn again.
+function onDashboardChange(dashboard) {
+  if (dashboard?.id == null) return;
+  state.dashboards[dashboard.id] = dashboard;
+  chooseDashboard();
+  populateDashboardMenu();
+  if (dashboard.id === state.dashboardId) updateBoard();
+  else if (isShownOrLinked(dashboard.id)) renderDashboard();
+  showHighlight();
+}
+document.addEventListener('dashboard-saved', (event) => onDashboardChange(event.detail));
+
 function watchHomey() {
-  // Re-render when the shown dashboard changes, or one it has a shortcut to (its name may have changed).
-  const isShownOrLinked = (id) => id === state.dashboardId
-    || (state.dashboards[state.dashboardId]?.columns ?? []).some((column) => column.widgets
-      .some((widget) => widget.type === 'dashboards_shortcuts' && widget.data?.dashboardIds?.includes(id)));
-  const onDashboardChange = (dashboard) => {
-    if (dashboard?.id == null) return;
-    state.dashboards[dashboard.id] = dashboard;
-    chooseDashboard();
-    populateDashboardMenu();
-    if (isShownOrLinked(dashboard.id)) renderDashboard();
-    showHighlight();
-  };
   state.realtime.on('homey:manager:dashboards', 'dashboard.create', onDashboardChange);
-  state.realtime.on('homey:manager:dashboards', 'dashboard.update', onDashboardChange);
+  state.realtime.on('homey:manager:dashboards', 'dashboard.update', (dashboard) => {
+    if (!isSaving(dashboard?.id)) onDashboardChange(dashboard);
+  });
   state.realtime.on('homey:manager:dashboards', 'dashboard.delete', ({ id }) => {
     delete state.dashboards[id];
     const wasShownOrLinked = isShownOrLinked(id);
@@ -109,6 +119,8 @@ function watchHomey() {
       showDashboard(data?.dashboardId);
     });
   }
+  // A widget on this dashboard that is to run another way (sandboxed, with storage or trusted) is loaded again.
+  watchWidgetModes(redrawWidgets);
   // Favorites live on the user, so re-render when they change in the mobile app.
   state.realtime.on('homey:manager:users', 'user.update', async (user) => {
     if (user?.id !== state.me?.id) return;
@@ -319,7 +331,7 @@ async function boot() {
       checkForUpdate('reconnected');
       registerScreen();
       fetchHighlight();
-      refreshAll().catch((error) => {
+      loadWidgetModes().then(refreshAll).catch((error) => {
         if (isRevokedKey(error)) pairAgain();
         else console.error(error);
       });
@@ -339,9 +351,15 @@ async function boot() {
   }
 
   try {
-    state.system = await state.client.api('GET', '/api/manager/system/').catch(() => ({}));
+    const [system] = await Promise.all([
+      state.client.api('GET', '/api/manager/system/').catch(() => ({})),
+      loadKeyScopes(),
+      loadWidgetModes(),
+    ]);
+    state.system = system;
     await refreshAll();
     settleKioskHome();
+    $('edit-button').hidden = false;
   } catch (error) {
     if (isRevokedKey(error)) return pairAgain();
     setStatus('error', 'Not connected');
@@ -351,4 +369,5 @@ async function boot() {
 
 initKiosk({ onHold: openUnlock, onIdle: kioskIdle });
 initFit();
+initEditMode();
 boot();

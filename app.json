@@ -98,6 +98,16 @@
       "method": "POST",
       "path": "/screen-hello",
       "public": true
+    },
+    "getWidgetModes": {
+      "method": "GET",
+      "path": "/widget-modes",
+      "public": true
+    },
+    "setWidgetMode": {
+      "method": "PUT",
+      "path": "/widget-modes/:id",
+      "public": true
     }
   },
   "flow": {

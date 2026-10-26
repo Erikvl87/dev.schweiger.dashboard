@@ -27,6 +27,7 @@ const NEEDED_SCOPES = [
 ];
 
 // Ticking a group's own box (or Homey) also allows deleting and changing things; every paired browser holds the key.
+// Dashboards (homey.dashboard) isn't among them: it is what editing on the web dashboards needs.
 const BROAD_SCOPES = {
   homey: 'Homey (everything)',
   'homey.app': 'Apps (installs and removes apps)',
@@ -39,7 +40,6 @@ const BROAD_SCOPES = {
   'homey.mood': 'Moods (edits and deletes moods)',
   'homey.logic': 'Variables (edits and deletes variables)',
   'homey.zone': 'Zones (edits and deletes zones)',
-  'homey.dashboard': 'Dashboards (edits and deletes dashboards)',
   'homey.energy': 'Energy (changes energy settings)',
   'homey.notifications': 'Notifications (deletes notifications)',
   'homey.insights': 'Logs (deletes logs)',
@@ -93,6 +93,12 @@ const WIDGET_TYPES = {
 };
 
 const matches = (query, ...texts) => texts.some((text) => text?.toLowerCase().includes(query.trim().toLowerCase()));
+
+// How an app widget runs on the web dashboards, chosen in its settings there; the first is the default. Sandboxed
+// widgets can't read the API key the page keeps; 'storage' also gives them localStorage, kept by the page, and a
+// trusted one runs unsandboxed, as in the Homey app, where it could read the key.
+const WIDGET_MODES = ['sandboxed', 'storage', 'trusted'];
+const validWidgetId = (id) => typeof id === 'string' && /^[\w-]{8,64}$/.test(id);
 
 // Screens: browsers showing the dashboard, each with a lasting random id it keeps in its storage and a name you give
 // it, so flow cards can aim at one of them. At most this many are kept; lastSeen is saved at most this often.
@@ -239,6 +245,7 @@ module.exports = class DashboardApp extends Homey.App {
     return {
       ...status,
       missing: NEEDED_SCOPES.filter(([scope]) => !grants(scopes, scope)).map(([, label]) => label),
+      canEdit: grants(scopes, 'homey.dashboard'),
       // With "homey" everything else is implied, so that alone is named.
       broad: Object.entries(BROAD_SCOPES)
         .filter(([scope]) => scopes.includes(scope) && (scope === 'homey' || !scopes.includes('homey')))
@@ -290,11 +297,38 @@ module.exports = class DashboardApp extends Homey.App {
     return this.getApiKeyStatus();
   }
 
-  // Whether this Homey accepts a key a dashboard sent. The public routes act only for one it does.
-  async checkKey(token) {
-    const accepted = typeof token === 'string' && token !== ''
-      && (await this.callHomey('/api/manager/sessions/session/me', token).catch(() => null))?.ok;
-    if (!accepted) throw new Error('Homey doesn\'t accept this key.');
+  // Whether this Homey accepts a key a dashboard sent, and has the scope, if one is named. The public routes act only
+  // for one it does.
+  async checkKey(token, scope) {
+    const scopes = typeof token === 'string' && token !== '' ? await this.keyScopes(token).catch(() => null) : null;
+    if (scopes == null) throw new Error('Homey doesn\'t accept this key.');
+    if (scope != null && !grants(scopes, scope)) throw new Error(`This key may not do that (it needs ${scope}).`);
+  }
+
+  // ----- How app widgets run on the web dashboards (a widget's settings there) -----
+
+  widgetModes() {
+    return this.homey.settings.get('widgetModes') ?? {};
+  }
+
+  // Public route: choosing it needs a key that may change dashboards, like the widget's other settings. Widgets no
+  // longer on a dashboard are dropped.
+  async setWidgetMode(id, { token, mode } = {}) {
+    await this.checkKey(token, 'homey.dashboard');
+    if (!validWidgetId(id)) throw new Error('Invalid widget id.');
+    if (!WIDGET_MODES.includes(mode)) throw new Error('Invalid mode.');
+    const modes = this.widgetModes();
+    if (mode === WIDGET_MODES[0]) delete modes[id];
+    else modes[id] = mode;
+    const dashboards = await this.getFromHomey('/api/manager/dashboards/dashboard').catch(() => null);
+    if (dashboards != null) {
+      const onBoard = new Set(Object.values(dashboards).flatMap((dashboard) => (dashboard.columns ?? [])
+        .flatMap((column) => column.widgets.map((widget) => widget.id))));
+      for (const stale of Object.keys(modes)) if (!onBoard.has(stale)) delete modes[stale];
+    }
+    this.homey.settings.set('widgetModes', modes);
+    this.homey.api.realtime('widget-modes', modes);
+    return modes;
   }
 
   // ----- Screens (named browsers flow cards can aim at) -----

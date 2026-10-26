@@ -29,6 +29,8 @@ Pick the dashboard by tapping its name at the top (as in the app), with a dashbo
 
 Closing a highlight on one screen (✕, Esc or a tap beside it) closes it on every screen showing it. Kiosk tablets keep it open when left alone. It is kept in memory, so an app restart closes it. Only dashboards served by the app show highlights.
 
+**Edit mode**: **Edit** (next to Settings; not in kiosk mode) puts the dashboard in edit mode, as in the Homey app. Each widget gets a menu (•••) to move it up, down or to the next column, edit it or remove it (a second tap confirms). Moves show straight away and are saved one after the other; a failed save puts back what Homey has. Only the widgets that changed are drawn again, and moved ones keep their state where the browser can move them as they are (`moveBefore`). *Edit Widget* opens its settings, laid out like the app's: Show Title and the title, and for app widgets their devices, the settings their app declares (text, textarea, number, dropdown, checkbox, autocomplete) and how the widget runs here (see Security). The built-in widgets' other settings are defined by the Homey app itself, so they are changed there. Adding and replacing widgets is left to the Homey app. Editing needs a key with `homey.dashboard` (not `homey.dashboard.readonly`); without it, Edit says so.
+
 On an iPad, *Share → Add to Home Screen* opens the dashboard without Safari's address bar. The home-screen app has its own storage, so it pairs once more.
 
 ## Developing
@@ -61,14 +63,16 @@ Routes in `api.js` (`/api/app/dev.schweiger.dashboard/…`):
 | `GET /screens`, `PUT /screens/:id`, `DELETE /screens/:id` | settings page | list, rename (`{ name }`) and forget screens; changes are also sent as the realtime event `screens`. Approving a pairing takes `{ name }` too |
 | `GET /highlight?screen=<id>` | public | that screen's highlight `{ highlight: { id, target, dashboardId, widgetId, name, dashboardName, size } }` or `{ highlight: null }` (the all-screens one without a known id); changes are sent as the realtime event `highlight` with every screen's |
 | `POST /highlight/close` | public | a dashboard closed a highlight: `{ token, id }`; acts only if Homey accepts the token, on every screen showing that `id` |
+| `GET /widget-modes` | public | how app widgets run, by widget id: `storage` or `trusted` (missing: `sandboxed`); changes are sent as the realtime event `widget-modes` |
+| `PUT /widget-modes/:id` | public | `{ token, mode }`; acts only if the token has `homey.dashboard`; drops widgets no longer on a dashboard |
 
 Waiting browsers are kept in memory for 10 minutes, at most 10 at a time; an app restart drops them and the browsers ask for a new code. Without a saved key, `POST /pairing` refuses. Served by the app, a browser whose key Homey rejects (401) forgets it and pairs again.
 
 ## Layout
 
 ```
-app.js                  dashboard address, API key, pairing, widget highlight flow cards
-api.js                  app API routes for pairing, the key and the highlight
+app.js                  dashboard address, API key, pairing, widget highlight flow cards, widget modes
+api.js                  app API routes for pairing, the key, the highlight and widget modes
 .homeycompose/flow/     flow cards (app.json is generated from .homeycompose/)
 settings/index.html     settings page: address, waiting browsers, screens, API key
 assets/web/
@@ -82,10 +86,14 @@ assets/web/
   js/highlight.js       shows the widget a flow highlighted, large or full screen
   js/mood-orb.js        mood icons: a gradient of the colours a mood sets (the Homey web app's method)
   manifest.json, img/   Add to Home Screen
-  js/render.js          renders a dashboard's columns of widgets
+  js/render.js          renders a dashboard's columns of widgets; updates them in place after a change
+  js/edit-mode.js       Edit: each widget's menu (move, edit, remove)
+  js/dashboard-save.js  saves changes to a dashboard (queued, optionally shown before they're saved)
+  js/widget-modes.js    how each app widget runs: sandboxed, with storage or trusted
+  js/widget-storage.js  localStorage for sandboxed app widgets (loaded as srcdoc with a script in front)
   js/widgets/index.js   registry of widget types → title, data needed, mount function
   js/widgets/*.js       one module per widget type
-  js/sheets/            device controls; lights / speakers / batteries / climate zone sheets
+  js/sheets/            device controls; lights / speakers / batteries / climate zone sheets; widget settings
   js/crossframe-host.js parent side of Homey's widget protocol (app widgets run in sandboxed iframes)
   js/realtime.js        socket.io live updates
   js/icons.js, js/icons/  icons (see below)
@@ -108,6 +116,13 @@ assets/web/
 ## Security
 
 Served by the app, the dashboard shares Homey's origin with Homey's own web app and every app's widgets and settings pages. App widgets therefore run in iframes sandboxed without `allow-same-origin`, so they can't read the stored API key. Use a key with only the permissions listed in the settings page.
+
+Every Homey address serves every app's files, so an app's own page opened on the dashboard's address would run with its storage. That's why popups a widget opens stay sandboxed (no `allow-popups-to-escape-sandbox`), and `Homey.popup()` only opens `http(s)` pages away from Homey's addresses: `homeylocal.com` isn't a public suffix, so browsers treat all its addresses as one site. For the same reason widgets can't get a real origin of their own: with `allow-same-origin`, a widget could load its app's page from the dashboard's address in a nested frame.
+
+A sandboxed widget has no storage, which breaks widgets that cache or remember things in `localStorage`. In a widget's settings, *Runs* offers two other ways, chosen per widget and kept by the app for every browser:
+
+- **Sandboxed with storage**: the page fetches the widget's HTML and loads it as `srcdoc`, still sandboxed, with a `<base>` for its folder and a script in front that gives it a `localStorage` this page keeps per app (256 KB each; an app's widgets share it, changes reach its other open frames) and a `sessionStorage` for the frame's lifetime. URLs built from `location.href` resolve against the widget's real address, so `Homey.getWidgetInstanceId()` works, but code that reads `location.search` or `location.pathname` itself sees `about:srcdoc`.
+- **Trusted**: no sandbox, as in the Homey app. The widget can read the key every paired browser uses.
 
 Pairing hands every approved browser the same key, so it lives in the app settings and in each browser's storage. Anyone on the network can ask for a code, but only a browser you approve gets the key, and only the browser holding the random poll id can collect it. To sign out one browser, clear its storage (**Settings → Forget** on the dashboard); to sign out all of them, delete the key in my.homey.app and save a new one. Never give the key `homey.app.control`: with it, a paired browser could change this app's settings and approve itself or others.
 
