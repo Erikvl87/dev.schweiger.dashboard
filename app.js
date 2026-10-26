@@ -124,19 +124,40 @@ module.exports = class DashboardApp extends Homey.App {
     // Waiting browsers live in memory only; a restart simply asks them for a new code.
     this.pairings = new Map();
 
-    const address = await this.homey.cloud.getLocalAddress(); // e.g. "192.168.3.210:80"
-    const ip = address.split(':')[0];
+    // e.g. "192.168.3.210:80"; a Homey Self-Hosted Server has its own http port, by default 4859.
+    const address = await this.homey.cloud.getLocalAddress();
+    const [ip, httpPort = '80'] = address.split(':');
     const path = `/app/${this.manifest.id}/assets/web/index.html`;
-    // *.homey.homeylocal.com resolves to the Homey on the local network and has a valid HTTPS certificate.
-    const secureUrl = `https://${ip.replace(/\./g, '-')}.homey.homeylocal.com${path}`;
-    const localUrl = `http://${address}${path}`;
-
-    this.homey.settings.set('dashboardUrl', secureUrl);
-    this.homey.settings.set('dashboardLocalUrl', localUrl);
-    this.log(`Dashboard: ${secureUrl}`);
+    this.homey.settings.set('dashboardLocalUrl', `http://${address}${path}`);
+    this.setSecureUrl(ip, Number(httpPort), path).catch(this.error);
 
     this.initHighlightCards();
     this.initShowDashboardCard();
+  }
+
+  // *.homey.homeylocal.com resolves to the Homey on the local network and has a valid HTTPS certificate. A Homey Pro
+  // serves it on 443; a Homey Self-Hosted Server on a port of its own, by default the one after its http port (4860),
+  // which no API names. The port that answers is used; until one does, and if none does, the default.
+  async setSecureUrl(ip, httpPort, path) {
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
+      // Only an IPv4 address has a homeylocal.com name.
+      this.homey.settings.set('dashboardUrl', this.homey.settings.get('dashboardLocalUrl'));
+      return;
+    }
+    const host = `${ip.replace(/\./g, '-')}.homey.homeylocal.com`;
+    const url = (port) => `https://${host}${port === 443 ? '' : `:${port}`}${path}`;
+    const ports = httpPort === 80 ? [443] : [httpPort + 1, 443];
+    this.homey.settings.set('dashboardUrl', url(ports[0]));
+    if (ports.length > 1) {
+      for (const port of ports) {
+        const response = await fetch(url(port), { signal: AbortSignal.timeout(3000) }).catch(() => null);
+        if (response?.ok) {
+          this.homey.settings.set('dashboardUrl', url(port));
+          break;
+        }
+      }
+    }
+    this.log(`Dashboard: ${this.homey.settings.get('dashboardUrl')}`);
   }
 
   // ----- Pairing (public routes: an unknown browser can only ask for a code and poll it) -----
