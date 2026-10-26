@@ -26,6 +26,49 @@ import { mountWebFrame } from './web-frame.js';
 import { mountZoneControls } from './zone-controls.js';
 import { mountZoneDevices, mountZoneLights, mountZoneMoods } from './zone-widgets.js';
 
+// Readable names of the widget types (as the highlight card in app.js names them), for edit mode and the widget's
+// settings when a widget has no title.
+const TYPE_NAMES = {
+  app_webview: 'App widget',
+  dashboards_shortcuts: 'Dashboards',
+  devices_favorites: 'Favorite devices',
+  flows_favorites: 'Favorite flows',
+  moods_favorites: 'Favorite moods',
+  devices_custom: 'Devices',
+  flows_custom: 'Flows',
+  moods_custom: 'Moods',
+  devices_zone: 'Zone devices',
+  moods_zone: 'Zone moods',
+  light_zones: 'Zone lights',
+  insights_chart_line: 'Chart',
+  light_device: 'Light',
+  light_group: 'Lights',
+  device_speaker_large: 'Speaker',
+  device_speaker_small: 'Speaker',
+  energy_usage: 'Energy',
+  thermostat: 'Thermostat',
+  notifications_timeline_large: 'Timeline',
+  notifications_timeline_small: 'Timeline',
+  device_camera_snapshot: 'Camera snapshot',
+  device_camera_live: 'Live camera',
+  web_frame: 'Web frame',
+  energy_dynamic_prices: 'Electricity prices',
+  logic_variables: 'Variables',
+  note: 'Note',
+  sensors_selection: 'Sensors',
+  zone_controls: 'Zone controls',
+  users_avatars: 'Users',
+  batteries_devices: 'Batteries',
+  batteries_device_low: 'Low batteries',
+  weather_forecast: 'Weather forecast',
+  weather: 'Weather',
+};
+
+export const widgetTypeName = (type) => TYPE_NAMES[type] ?? type;
+
+// The name a widget gives what it shows ("Custom Name" in the app): data.name, unless nameHidden.
+const customName = (widget) => (widget.data?.nameHidden !== true && typeof widget.data?.name === 'string' ? widget.data.name.trim() : null);
+
 export const WIDGETS = {
   app_webview: { needs: ['appWidgets'], mount: mountAppWidget },
   dashboards_shortcuts: { title: 'Dashboards', mount: mountDashboardShortcuts },
@@ -39,8 +82,8 @@ export const WIDGETS = {
   moods_zone: { needs: ['moods', 'zones', 'devices'], mount: mountZoneMoods },
   light_zones: { needs: ['devices', 'zones'], mount: mountZoneLights },
   insights_chart_line: { mount: mountInsightsChart },
-  light_device: { needs: ['devices'], mount: ({ body, widget }) => mountLights(body, [widget.data?.lightId]) },
-  light_group: { needs: ['devices'], mount: ({ body, widget }) => mountLights(body, widget.data?.lightIds ?? []) },
+  light_device: { needs: ['devices'], mount: ({ body, widget }) => mountLights(body, [widget.data?.lightId], customName(widget)) },
+  light_group: { needs: ['devices'], mount: ({ body, widget }) => mountLights(body, widget.data?.lightIds ?? [], customName(widget)) },
   device_speaker_large: { needs: ['devices'], mount: mountSpeaker },
   device_speaker_small: { needs: ['devices'], mount: (context) => mountSpeaker({ ...context, compact: true }) },
   energy_usage: { needs: ['devices'], mount: mountEnergyUsage },

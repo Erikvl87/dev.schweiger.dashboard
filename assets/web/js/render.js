@@ -7,7 +7,7 @@ import { $, el, note } from './dom.js';
 import { addEditTools } from './edit-mode.js';
 import { fitBoard } from './fit.js';
 import { state } from './state.js';
-import { WIDGETS } from './widgets/index.js';
+import { WIDGETS, widgetTypeName } from './widgets/index.js';
 
 // The board's widgets by id: the settings each was drawn with, its section and its cleanup. A highlight can lift one
 // (highlight.js).
@@ -95,7 +95,7 @@ function arrange(parent, sections) {
 
 function drawWidget(dashboardId, widget, parent, before) {
   const { section, cleanup } = renderWidget(widget, parent, before);
-  const name = section.querySelector('.widget-title').textContent || WIDGETS[widget.type]?.title || widget.type;
+  const name = section.querySelector('.widget-title').textContent || WIDGETS[widget.type]?.title || widgetTypeName(widget.type);
   addEditTools(section, { dashboardId, widgetId: widget.id, name });
   drawn.set(widget.id, { widget, section, cleanup });
 }

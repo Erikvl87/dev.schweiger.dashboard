@@ -7,13 +7,14 @@ import { openDeviceSheet, sheetComponents } from '../sheets/device-sheet.js';
 import { state } from '../state.js';
 import { average } from '../zones.js';
 
-export function mountLights(body, ids) {
+// customName: the widget's own name for the lights ("Custom Name" in the app), if it has one.
+export function mountLights(body, ids, customName = null) {
   if (!requireData(body, 'devices')) return;
   const devices = ids.map((id) => state.data.devices[id]).filter(Boolean);
   if (devices.length === 0) return note(body, 'These lights no longer exist.');
 
-  // A group is named after its first light, like "Ecklampe +2" in the mobile app.
-  const label = devices.length > 1 ? `${devices[0].name} +${devices.length - 1}` : devices[0].name;
+  // Without a name of its own, a group is named after its first light, like "Ecklampe +2" in the mobile app.
+  const label = customName || (devices.length > 1 ? `${devices[0].name} +${devices.length - 1}` : devices[0].name);
   const panel = el('div', 'device-panel');
   const head = el('div', 'panel-head');
   const text = el('div', 'panel-text');

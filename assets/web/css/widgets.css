@@ -3,6 +3,14 @@
 /* ----- App widgets ----- */
 .app-frame { border-radius: 16px; overflow: hidden; }
 .widget.is-transparent .app-frame { border-radius: 0; overflow: visible; }
+/* A widget set to dark whatever the page's theme ("Force Dark Mode" on a chart). */
+.widget.is-dark {
+  color-scheme: dark;
+  --panel: #1f2029; --card: #1f2029; --tile: #181920; --tile-border: #2b2c36; --tile-filled: #2b2c36;
+  --text-primary: #f5f5f7; --text-secondary: #9fa0a9; --text-muted: #74747c;
+  --grid: #2c2c34; --axis: #4a4a53; --series-1: #b347ea; --shadow: none;
+  color: var(--text-primary);
+}
 .widget-frame {
   display: block;
   width: 100%;

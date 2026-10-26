@@ -10,9 +10,13 @@ export const RESOLUTION_LABELS = {
   last14Days: 'Last 14 Days',
   last31Days: 'Last 31 Days',
   today: 'Today',
+  yesterday: 'Yesterday',
   thisWeek: 'This Week',
+  lastWeek: 'Last Week',
   thisMonth: 'This Month',
+  lastMonth: 'Last Month',
   thisYear: 'This Year',
+  lastYear: 'Last Year',
   last2Years: 'Last 2 Years',
 };
 

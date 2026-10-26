@@ -10,6 +10,7 @@ import { openWidgetSettings } from './sheets/widget-settings.js';
 import { state } from './state.js';
 
 let menu = null; // The open widget menu, if any.
+let menuAnchor = null; // Its widget's ••• button.
 
 export function isEditing() {
   return document.documentElement.classList.contains('editing');
@@ -25,6 +26,17 @@ export function setEditing(on) {
 function closeMenu() {
   menu?.remove();
   menu = null;
+  menuAnchor = null;
+}
+
+// Under the ••• button, kept on screen; it follows the widget while the page scrolls.
+function placeMenu() {
+  if (menu == null) return;
+  if (!menuAnchor.isConnected) return closeMenu();
+  const box = menuAnchor.getBoundingClientRect();
+  const width = menu.offsetWidth;
+  menu.style.top = `${Math.min(box.bottom + 8, innerHeight - menu.offsetHeight - 8)}px`;
+  menu.style.left = `${Math.max(8, Math.min(box.right - width, innerWidth - width - 8))}px`;
 }
 
 // Saves a change, shown straight away; the menu closes either way and a refused change says why.
@@ -105,13 +117,9 @@ function openMenu(anchor, { dashboardId, widgetId, name }) {
   });
   menu.append(moves, edit, remove);
   document.body.append(menu);
-
-  // Under the ••• button, kept on screen.
-  const box = anchor.getBoundingClientRect();
-  const width = menu.offsetWidth;
-  menu.style.top = `${Math.min(box.bottom + 8, innerHeight - menu.offsetHeight - 8)}px`;
-  menu.style.left = `${Math.max(8, Math.min(box.right - width, innerWidth - width - 8))}px`;
-  menu.querySelector('[role="menuitem"]').focus();
+  menuAnchor = anchor;
+  placeMenu();
+  menu.querySelector('[role="menuitem"]').focus({ preventScroll: true });
 }
 
 // The edit-mode layer over a drawn widget (render.js): it takes the taps, so the widget can't be used while editing,
@@ -140,7 +148,9 @@ export function initEditMode() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && menu) closeMenu();
   });
-  addEventListener('scroll', closeMenu, { passive: true });
+  // Also the board's own sideways scrolling.
+  addEventListener('scroll', placeMenu, { capture: true, passive: true });
+  addEventListener('resize', placeMenu);
   // A tablet put into kiosk mode leaves edit mode.
   new MutationObserver(() => {
     if (isKiosk() && isEditing()) setEditing(false);

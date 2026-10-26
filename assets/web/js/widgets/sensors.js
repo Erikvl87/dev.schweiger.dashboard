@@ -23,7 +23,8 @@ const SENSOR_COLORS = {
 
 const SENSOR_DEFAULT_COLOR = '#b820e2';
 
-function sensorStyle(capabilityId, value) {
+// The icon and colour of a capability (also an Insights log's, in the chart's settings).
+export function sensorStyle(capabilityId, value) {
   const [base, sub] = capabilityId.split('.');
   const icons = SENSOR_CAPABILITY_ICONS[base]
     ?? (base.startsWith('alarm_') ? SENSOR_CAPABILITY_ICONS.alarm_generic : SENSOR_CAPABILITY_ICONS.measure);

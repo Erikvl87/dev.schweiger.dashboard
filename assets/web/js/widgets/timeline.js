@@ -12,10 +12,13 @@ const TIMELINE_COLLAPSED_SMALL = 3;
 
 const relativeTime = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
-export function mountTimeline({ body, small = false }) {
+export function mountTimeline({ body, widget, small = false }) {
   const shown = small ? TIMELINE_COLLAPSED_SMALL : TIMELINE_COLLAPSED;
   if (!requireData(body, 'notifications')) return;
-  let items = Object.values(state.data.notifications).sort((a, b) => b.dateCreated.localeCompare(a.dateCreated));
+  // "Show only…" in the app: the categories (notification owners) switched off.
+  const excluded = new Set(widget?.data?.excluded ?? []);
+  const included = (notification) => !excluded.has(notification.ownerUri);
+  let items = Object.values(state.data.notifications).filter(included).sort((a, b) => b.dateCreated.localeCompare(a.dateCreated));
   let renderDialog = null;
 
   // The small widget is larger type with plain names and "an hour ago" times, as in the app.
@@ -39,6 +42,7 @@ export function mountTimeline({ body, small = false }) {
 
   const cleanups = [
     subscribe('homey:manager:notifications', 'notification.create', (notification) => {
+      if (!included(notification)) return;
       items = [notification, ...items.filter((item) => item.id !== notification.id)];
       render();
     }),

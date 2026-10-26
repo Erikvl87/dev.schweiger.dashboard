@@ -4,8 +4,10 @@ import { RESOLUTION_LABELS, drawAreaChart, formatLogValue, niceScale, timeTicks 
 import { el, note } from '../dom.js';
 import { state } from '../state.js';
 
-export function mountInsightsChart({ body, widget, setTitle }) {
-  const { logId, resolution = 'last24Hours' } = widget.data ?? {};
+export function mountInsightsChart({ body, section, widget, setTitle }) {
+  const { logId, resolution = 'last24Hours', darkMode } = widget.data ?? {};
+  // "Force Dark Mode" in the app.
+  if (darkMode === true) section.classList.add('is-dark');
   if (!logId) return note(body, 'This chart has no Insights log selected.');
   const resolutionLabel = RESOLUTION_LABELS[resolution] ?? resolution;
 

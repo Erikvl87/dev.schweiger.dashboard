@@ -4,15 +4,12 @@ import { el } from '../dom.js';
 import { subscribe } from '../realtime.js';
 import { state } from '../state.js';
 
-const NOTE_COLORS = {
+// The colours the Homey app offers, in its order, as it stores them.
+export const NOTE_COLORS = {
   yellow: '#fef49c',
-  orange: '#ffd9b0',
-  red: '#ffc9c4',
-  pink: '#ffd3e6',
-  purple: '#e4d7ff',
-  blue: '#cfe6ff',
-  green: '#d3f3c8',
-  gray: '#e6e6ea',
+  red: '#ffb3b0',
+  green: '#deffdb',
+  blue: '#bce1fe',
 };
 
 // The note's text lives in its widget store; the key isn't documented, so take the first string.
