@@ -91,15 +91,33 @@ async function handleWidgetMessage(host, source, { event, data, callbackId }) {
         }),
       );
       return NO_REPLY;
-    case 'popup':
-      if (data?.url) window.open(data.url, '_blank', 'noopener');
+    case 'popup': {
+      const url = popupUrl(data?.url, host);
+      if (url) window.open(url, '_blank', 'noopener');
       return null;
+    }
     case 'shortPressHapticFeedback':
     case 'emit':
       return null;
     default:
       throw new Error(`Unsupported widget call: ${event}`);
   }
+}
+
+// Homey.popup(url) opens web pages, but none on a Homey address: this page opens it unsandboxed, and there an app's
+// own page would run with this page's storage, where the API key is. homeylocal.com isn't a public suffix, so the
+// browser treats all its addresses as one site.
+function popupUrl(value, host) {
+  let url;
+  try {
+    url = new URL(String(value), host.src);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  if (url.origin === location.origin || url.origin === state.client.origin) return null;
+  if (url.hostname === 'homeylocal.com' || url.hostname.endsWith('.homeylocal.com')) return null;
+  return url.href;
 }
 
 // A height in pixels, or a percentage of the widget's width (as in the manifest's "height": "100%").

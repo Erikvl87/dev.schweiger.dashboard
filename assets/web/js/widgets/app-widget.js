@@ -5,6 +5,10 @@ import { requireData } from '../data.js';
 import { el, note } from '../dom.js';
 import { state } from '../state.js';
 
+// No allow-popups-to-escape-sandbox: a popup that escaped would run unsandboxed, and one opened on a Homey address
+// could run an app's code on this page's origin, where the API key is.
+const SANDBOX = 'allow-scripts allow-forms allow-popups';
+
 export function mountAppWidget({ widget, section, body, setTitle }) {
   if (!requireData(body, 'appWidgets')) return;
   const definition = state.data.appWidgets[widget.data?.appWidgetId];
@@ -26,13 +30,15 @@ export function mountAppWidget({ widget, section, body, setTitle }) {
   // Served by the Homey app, this page shares Homey's origin with every app's widgets. Without
   // allow-same-origin the widget runs in its own opaque origin, so it can't read the API key this page stores.
   // Set before src, so the first load is already sandboxed.
-  iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox');
-  iframe.src = `${state.client.base}/app/${encodeURIComponent(appId)}/widgets/${encodeURIComponent(definition.ownerId)}/index.html?widgetInstanceId=${encodeURIComponent(widget.id)}`;
+  iframe.setAttribute('sandbox', SANDBOX);
+  const src = `${state.client.base}/app/${encodeURIComponent(appId)}/widgets/${encodeURIComponent(definition.ownerId)}/index.html?widgetInstanceId=${encodeURIComponent(widget.id)}`;
+  iframe.src = src;
   frame.append(iframe);
   body.append(frame);
 
   const host = {
     iframe,
+    src,
     appId,
     widgetId: definition.ownerId,
     instanceId: widget.id,
