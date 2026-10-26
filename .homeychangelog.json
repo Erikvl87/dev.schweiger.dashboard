@@ -7,5 +7,8 @@
   },
   "1.1.0": {
     "en": "New: a Fit to screen width option in the dashboard's Settings, and open dashboards reload by themselves after an app update. Fixed: the live camera's full-screen button now also exits full screen, zone device widgets set to all device types show their devices again, and app widgets can only reach their own API."
+  },
+  "1.2.0": {
+    "en": "New: Flow cards to show a dashboard or highlight a widget large or full screen (the door camera when the bell rings, for example) on all screens or one named screen, check and close the highlight, and react when it closes. Screens are named in the app settings. Live cameras: widgets showing the same camera share one stream, so a second one shows video at once."
   }
 }
