@@ -1,6 +1,6 @@
 // App widgets: the app's own HTML in an iframe.
 
-import { widgetHosts } from '../crossframe-host.js';
+import { applyWidgetHeight, widgetHosts } from '../crossframe-host.js';
 import { requireData } from '../data.js';
 import { el, note } from '../dom.js';
 import { state } from '../state.js';
@@ -22,7 +22,7 @@ export function mountAppWidget({ widget, section, body, setTitle }) {
   const frame = el('div', 'app-frame');
   const iframe = el('iframe', 'widget-frame');
   iframe.title = definition.name;
-  iframe.style.height = `${definition.height ?? 200}px`;
+  applyWidgetHeight(iframe, definition.height ?? 200);
   // Served by the Homey app, this page shares Homey's origin with every app's widgets. Without
   // allow-same-origin the widget runs in its own opaque origin, so it can't read the API key this page stores.
   // Set before src, so the first load is already sandboxed.

@@ -65,11 +65,11 @@ async function handleWidgetMessage(host, source, { event, data, callbackId }) {
         isDarkMode: isDarkMode(),
       };
     case 'ready':
-      applyWidgetHeight(host, data?.height);
+      applyWidgetHeight(host.iframe, data?.height);
       host.onReady();
       return null;
     case 'setHeight':
-      applyWidgetHeight(host, data?.height);
+      applyWidgetHeight(host.iframe, data?.height);
       return null;
     case 'api': {
       const method = String(data?.method ?? 'GET').toUpperCase();
@@ -102,19 +102,20 @@ async function handleWidgetMessage(host, source, { event, data, callbackId }) {
   }
 }
 
-function applyWidgetHeight(host, height) {
+// A height in pixels, or a percentage of the widget's width (as in the manifest's "height": "100%").
+export function applyWidgetHeight(iframe, height) {
   if (typeof height === 'string' && height.trim().endsWith('%')) {
     const percent = parseFloat(height);
     if (percent > 0) {
-      host.iframe.style.height = 'auto';
-      host.iframe.style.aspectRatio = `100 / ${percent}`;
+      iframe.style.height = 'auto';
+      iframe.style.aspectRatio = `100 / ${percent}`;
     }
     return;
   }
   const pixels = Number(height);
   if (height != null && pixels > 0) {
-    host.iframe.style.aspectRatio = '';
-    host.iframe.style.height = `${pixels}px`;
+    iframe.style.aspectRatio = '';
+    iframe.style.height = `${pixels}px`;
   }
 }
 
